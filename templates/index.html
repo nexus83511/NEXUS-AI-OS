@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus AI-OS | Enterprise Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        #messages::-webkit-scrollbar { width: 6px; }
+        #messages::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 10px; }
+        .ai-msg-bubble { background: rgba(51, 65, 85, 0.5); border: 1px solid rgba(255,255,255,0.05); }
+        .user-msg-bubble { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); }
+    </style>
+</head>
+<body class="flex flex-col items-center p-4 md:p-8">
+
+    <header class="mb-10 text-center animate-fade-in">
+        <h1 class="text-6xl font-extrabold tracking-tighter text-white mb-2">
+            NEXUS <span class="text-sky-400">AI-OS</span>
+        </h1>
+        <div class="flex items-center justify-center gap-2">
+            <span class="relative flex h-3 w-3">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <p class="text-slate-400 font-mono text-sm uppercase tracking-widest">Autonomous Sales Engine Active</p>
+        </div>
+    </header>
+
+    <div id="chat-container" class="glass-card w-full max-w-4xl rounded-3xl p-6 flex flex-col overflow-hidden">
+        
+        <div id="messages" class="h-[500px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
+            <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
+                <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
+                Greetings, Commander. The Spanish market analysis is ready. How shall we proceed with lead generation today?
+            </div>
+        </div>
+        
+        <div class="space-y-4">
+            <div class="flex gap-3">
+                <input type="text" id="userInput" 
+                    class="flex-grow bg-slate-900/80 border border-slate-700 p-4 rounded-2xl focus:outline-none focus:border-sky-500 transition-all text-white placeholder-slate-500" 
+                    placeholder="Enter industry or target location...">
+                <button onclick="sendMessage()" 
+                    class="bg-sky-500 hover:bg-sky-400 text-slate-900 font-bold px-10 rounded-2xl transition-all transform active:scale-95 shadow-lg shadow-sky-500/20 uppercase tracking-tight">
+                    Analyze
+                </button>
+            </div>
+            
+            <div class="flex flex-wrap gap-2">
+                <button onclick="quickAction('Find 5 dental clinics in Barcelona with high potential')" 
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
+                    🔍 Find Leads
+                </button>
+                <button onclick="quickAction('Draft a professional Spanish pitch for these leads')" 
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
+                    📱 WhatsApp Pitch
+                </button>
+                <button onclick="quickAction('Draft a high-converting cold email')" 
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
+                    ✉️ Draft Email
+                </button>
+                <button onclick="saveToCSV()" id="save-btn" 
+                    class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full transition-all hidden font-bold">
+                    💾 Export CSV Database
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-8 text-slate-500 text-xs tracking-widest uppercase">
+        Nexus AI-OS &copy; 2026 | Built for Hyper-Growth
+    </footer>
+
+    <script>
+        let lastLeads = []; 
+
+        function quickAction(cmd) {
+            document.getElementById('userInput').value = cmd;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const messages = document.getElementById('messages');
+            if(!input.value) return;
+
+            const text = input.value;
+            // User message bubble
+            messages.innerHTML += `
+                <div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">
+                    ${text}
+                </div>`;
+            input.value = '';
+
+            const response = await fetch('/ask-agent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await response.json();
+
+            // AI message bubble
+            messages.innerHTML += `
+                <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
+                    <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
+                    ${data.reply.replace(/\n/g, '<br>')}
+                </div>`;
+            
+            messages.scrollTop = messages.scrollHeight;
+
+            if(text.toLowerCase().includes('find') || text.toLowerCase().includes('leads')) {
+                document.getElementById('save-btn').classList.remove('hidden');
+                lastLeads = [{ "Timestamp": new Date().toLocaleString(), "Query": text, "Status": "Verified" }];
+            }
+        }
+
+        async function saveToCSV() {
+            const response = await fetch('/save-leads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leads: lastLeads })
+            });
+            const result = await response.json();
+            alert("Database Exported: " + (result.message || result.error));
+        }
+    </script>
+</body>
+</html>
