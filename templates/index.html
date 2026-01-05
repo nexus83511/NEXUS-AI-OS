@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,18 +52,27 @@
 
     <div id="chat-container" class="glass-card w-full max-w-4xl rounded-3xl p-6 flex flex-col overflow-hidden">
         
-        <div class="mb-6 p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50">
-            <label class="block text-sky-400 text-xs font-bold uppercase tracking-widest mb-2">🚀 AI Sales Brain (Product Training)</label>
-            <textarea id="productDetails" 
-                class="w-full training-input rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none h-20 resize-none"
-                placeholder="Example: We sell AI Bots for $500 that automate appointment booking for doctors..."></textarea>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50">
+                <label class="block text-sky-400 text-xs font-bold uppercase tracking-widest mb-2">🚀 AI Sales Brain (Product Training)</label>
+                <textarea id="productDetails" 
+                    class="w-full training-input rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none h-24 resize-none"
+                    placeholder="What are you selling? (e.g. AI Bots for Real Estate)"></textarea>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50">
+                <label class="block text-emerald-400 text-xs font-bold uppercase tracking-widest mb-2">📚 Company Knowledge Base (Support AI)</label>
+                <textarea id="knowledgeBase" 
+                    class="w-full training-input rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none h-24 resize-none"
+                    placeholder="Paste Price Lists, FAQs, or Service Details here..."></textarea>
+            </div>
         </div>
 
-        <div id="messages" class="h-[400px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
+        <div id="messages" class="h-[350px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
             <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed border-l-4 border-sky-500">
-                <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">System Authorization Granted</b>
+                <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider font-bold">System Authorization Granted</b>
                 <span class="text-lg font-bold block mb-2 text-white">READY TO DOMINATE THE MARKET? ⚡</span>
-                Commander, your Autonomous Sales Engine is online. Feed me your product details above, and I will hunt down leads and close deals while you sleep. What's our first target?
+                Commander, your Autonomous Sales Engine is online. Train my brain and knowledge base, and I will hunt down leads and close deals. What's our first target?
             </div>
         </div>
         
@@ -79,21 +88,21 @@
             </div>
             
             <div class="flex flex-wrap gap-2">
-                <button onclick="quickAction('Find 5 dental clinics in Dubai')" 
-                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
+                <button onclick="quickAction('Find 5 software agencies in Dubai')" 
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300 font-semibold transition-all">
                     🔍 Find Leads
                 </button>
                 <button onclick="quickAction('Draft a professional WhatsApp pitch using my product info')" 
-                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300 font-semibold transition-all">
                     📱 Sales Pitch
                 </button>
                 <button onclick="sendWhatsApp()" 
-                    class="bg-green-600/20 hover:bg-green-600/40 border border-green-500 text-green-400 text-xs py-2.5 px-5 rounded-full transition-all font-bold">
-                    🚀 Launch on WhatsApp
+                    class="bg-green-600/20 hover:bg-green-600/40 border border-green-500 text-green-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
+                    🚀 Launch WhatsApp
                 </button>
                 <button onclick="saveToCSV()" id="save-btn" 
-                    class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full transition-all hidden font-bold">
-                    💾 Export CSV Database
+                    class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full hidden font-bold transition-all">
+                    💾 Export CSV
                 </button>
             </div>
         </div>
@@ -106,7 +115,6 @@
     <script>
         let lastLeads = []; 
 
-        // FIX: Enter Key Support
         document.getElementById("userInput").addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
@@ -122,17 +130,13 @@
         async function sendMessage() {
             const input = document.getElementById('userInput');
             const product = document.getElementById('productDetails');
+            const kb = document.getElementById('knowledgeBase');
             const messages = document.getElementById('messages');
             
             if(!input.value) return;
 
             const text = input.value;
-            const productInfo = product.value;
-
-            messages.innerHTML += `
-                <div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">
-                    ${text}
-                </div>`;
+            messages.innerHTML += `<div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">${text}</div>`;
             input.value = '';
 
             const response = await fetch('/ask-agent', {
@@ -140,7 +144,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     message: text,
-                    product_context: productInfo 
+                    product_context: product.value,
+                    kb_context: kb.value // Sending knowledge base to backend
                 })
             });
             const data = await response.json();
@@ -159,7 +164,6 @@
             }
         }
 
-        // WhatsApp Automation Logic
         function sendWhatsApp() {
             const messages = document.querySelectorAll('.ai-msg-bubble');
             if (messages.length < 2) {
@@ -179,7 +183,7 @@
                 body: JSON.stringify({ leads: lastLeads })
             });
             const result = await response.json();
-            alert("Database Exported: " + (result.message || result.error));
+            alert("Database Exported!");
         }
     </script>
 </body>
