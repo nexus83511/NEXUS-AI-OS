@@ -24,7 +24,6 @@
         .ai-msg-bubble { background: rgba(51, 65, 85, 0.5); border: 1px solid rgba(255,255,255,0.05); }
         .user-msg-bubble { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); }
         
-        /* New Training Section Styles */
         .training-input {
             background: rgba(15, 23, 42, 0.8);
             border: 1px solid rgba(56, 189, 248, 0.2);
@@ -57,13 +56,14 @@
             <label class="block text-sky-400 text-xs font-bold uppercase tracking-widest mb-2">🚀 AI Sales Brain (Product Training)</label>
             <textarea id="productDetails" 
                 class="w-full training-input rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none h-20 resize-none"
-                placeholder="Train your AI: What are you selling? (e.g., We provide SEO services for $100/month for dentists in Europe)"></textarea>
+                placeholder="Example: We sell AI Bots for $500 that automate appointment booking for doctors..."></textarea>
         </div>
 
         <div id="messages" class="h-[400px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
-            <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
-                <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
-                Greetings, Commander. Train my brain with your product above, then tell me which market we shall dominate today.
+            <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed border-l-4 border-sky-500">
+                <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">System Authorization Granted</b>
+                <span class="text-lg font-bold block mb-2 text-white">READY TO DOMINATE THE MARKET? ⚡</span>
+                Commander, your Autonomous Sales Engine is online. Feed me your product details above, and I will hunt down leads and close deals while you sleep. What's our first target?
             </div>
         </div>
         
@@ -79,13 +79,17 @@
             </div>
             
             <div class="flex flex-wrap gap-2">
-                <button onclick="quickAction('Find 5 dental clinics in Barcelona')" 
+                <button onclick="quickAction('Find 5 dental clinics in Dubai')" 
                     class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
                     🔍 Find Leads
                 </button>
                 <button onclick="quickAction('Draft a professional WhatsApp pitch using my product info')" 
                     class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
                     📱 Sales Pitch
+                </button>
+                <button onclick="sendWhatsApp()" 
+                    class="bg-green-600/20 hover:bg-green-600/40 border border-green-500 text-green-400 text-xs py-2.5 px-5 rounded-full transition-all font-bold">
+                    🚀 Launch on WhatsApp
                 </button>
                 <button onclick="saveToCSV()" id="save-btn" 
                     class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full transition-all hidden font-bold">
@@ -101,6 +105,14 @@
 
     <script>
         let lastLeads = []; 
+
+        // FIX: Enter Key Support
+        document.getElementById("userInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
 
         function quickAction(cmd) {
             document.getElementById('userInput').value = cmd;
@@ -128,14 +140,14 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     message: text,
-                    product_context: productInfo // Sending product info to backend
+                    product_context: productInfo 
                 })
             });
             const data = await response.json();
 
             messages.innerHTML += `
-                <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
-                    <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
+                <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed border-l-2 border-sky-400">
+                    <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider font-bold">Nexus Intelligence</b>
                     ${data.reply.replace(/\n/g, '<br>')}
                 </div>`;
             
@@ -145,6 +157,19 @@
                 document.getElementById('save-btn').classList.remove('hidden');
                 lastLeads = [{ "Timestamp": new Date().toLocaleString(), "Query": text, "Status": "Verified" }];
             }
+        }
+
+        // WhatsApp Automation Logic
+        function sendWhatsApp() {
+            const messages = document.querySelectorAll('.ai-msg-bubble');
+            if (messages.length < 2) {
+                alert("Please generate a pitch first!");
+                return;
+            }
+            const lastMessage = messages[messages.length - 1].innerText.replace('Nexus Intelligence', '');
+            const encodedMessage = encodeURIComponent(lastMessage.trim());
+            const whatsappUrl = `https://web.whatsapp.com/send?text=${encodedMessage}`;
+            window.open(whatsappUrl, '_blank');
         }
 
         async function saveToCSV() {
