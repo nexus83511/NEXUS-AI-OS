@@ -106,3 +106,20 @@ def save_leads():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000)
+    
+def generate_sales_pitch(lead_info, product_details):
+    prompt = f"""
+    You are a world-class AI Sales Closer. 
+    Based on this Lead Info: {lead_info}
+    And these Product Details: {product_details}
+    
+    Write a highly personalized, short, and punchy sales message. 
+    The goal is to show how our product solves their specific problem.
+    Keep the tone professional yet friendly. Use the language of the lead's location.
+    """
+    
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content

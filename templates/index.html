@@ -23,6 +23,17 @@
         #messages::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 10px; }
         .ai-msg-bubble { background: rgba(51, 65, 85, 0.5); border: 1px solid rgba(255,255,255,0.05); }
         .user-msg-bubble { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); }
+        
+        /* New Training Section Styles */
+        .training-input {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            transition: all 0.3s ease;
+        }
+        .training-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+        }
     </style>
 </head>
 <body class="flex flex-col items-center p-4 md:p-8">
@@ -42,10 +53,17 @@
 
     <div id="chat-container" class="glass-card w-full max-w-4xl rounded-3xl p-6 flex flex-col overflow-hidden">
         
-        <div id="messages" class="h-[500px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
+        <div class="mb-6 p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50">
+            <label class="block text-sky-400 text-xs font-bold uppercase tracking-widest mb-2">🚀 AI Sales Brain (Product Training)</label>
+            <textarea id="productDetails" 
+                class="w-full training-input rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none h-20 resize-none"
+                placeholder="Train your AI: What are you selling? (e.g., We provide SEO services for $100/month for dentists in Europe)"></textarea>
+        </div>
+
+        <div id="messages" class="h-[400px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
             <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
                 <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
-                Greetings, Commander. The Global Market Analysis System is online. Which region shall we dominate today?
+                Greetings, Commander. Train my brain with your product above, then tell me which market we shall dominate today.
             </div>
         </div>
         
@@ -61,17 +79,13 @@
             </div>
             
             <div class="flex flex-wrap gap-2">
-                <button onclick="quickAction('Find 5 dental clinics in Barcelona with high potential')" 
+                <button onclick="quickAction('Find 5 dental clinics in Barcelona')" 
                     class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
                     🔍 Find Leads
                 </button>
-                <button onclick="quickAction('Draft a professional Spanish pitch for these leads')" 
+                <button onclick="quickAction('Draft a professional WhatsApp pitch using my product info')" 
                     class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
-                    📱 WhatsApp Pitch
-                </button>
-                <button onclick="quickAction('Draft a high-converting cold email')" 
-                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
-                    ✉️ Draft Email
+                    📱 Sales Pitch
                 </button>
                 <button onclick="saveToCSV()" id="save-btn" 
                     class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full transition-all hidden font-bold">
@@ -95,11 +109,14 @@
 
         async function sendMessage() {
             const input = document.getElementById('userInput');
+            const product = document.getElementById('productDetails');
             const messages = document.getElementById('messages');
+            
             if(!input.value) return;
 
             const text = input.value;
-            // User message bubble
+            const productInfo = product.value;
+
             messages.innerHTML += `
                 <div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">
                     ${text}
@@ -109,11 +126,13 @@
             const response = await fetch('/ask-agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text })
+                body: JSON.stringify({ 
+                    message: text,
+                    product_context: productInfo // Sending product info to backend
+                })
             });
             const data = await response.json();
 
-            // AI message bubble
             messages.innerHTML += `
                 <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
                     <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
