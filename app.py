@@ -13,7 +13,7 @@ app.secret_key = "nexus_secret_key_123_abc"
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# --- Function: Google Search Leads ke liye ---
+# --- Function: Google Search Leads ---
 def search_leads(query):
     url = "https://google.serper.dev/search"
     payload = json.dumps({"q": query})
@@ -37,27 +37,29 @@ def ask_agent():
     try:
         data = request.get_json()
         user_query = data.get('message')
+        # Frontend se product information pakarna
+        product_context = data.get('product_context', 'Nexus AI-OS Automation Services')
 
         if 'chat_history' not in session:
             session['chat_history'] = []
 
         search_data = ""
         if any(word in user_query.lower() for word in ["find", "search", "leads", "business"]):
-            print("Searching for live leads...")
             raw_results = search_leads(user_query)
             if raw_results:
                 search_data = f"\n\nReal-time Search Results: {json.dumps(raw_results)[:2000]}"
 
-        # --- NAYA ADVANCED SYSTEM PROMPT ---
-        system_prompt = """
+        # --- DYNAMIC SYSTEM PROMPT (User ke Product ke mutabiq) ---
+        system_prompt = f"""
         You are the Nexus Autonomous Sales Engine. 
-        Your goal is to find leads and immediately prepare them for outreach.
+        Your CURRENT MISSION is to sell this product/service: {product_context}
+        
         When you find businesses:
         1. List their names, websites, and descriptions.
-        2. For EACH business, write a 1-sentence 'Value Proposition' (Why they need Nexus AI-OS).
-        3. If the user asks for an email, draft a professional, short, and high-converting cold email.
-        Always stay focused on ROI (Return on Investment) and business growth. 
-        Be professional, sharp, and business-oriented.
+        2. For EACH business, write a personalized 'Value Proposition' explaining why THEY need THIS specific product: {product_context}.
+        3. If the user asks for a pitch (WhatsApp or Email), draft a professional, short, and high-converting message centered ONLY on {product_context}.
+        
+        Always stay focused on ROI and business growth. Be professional and sharp.
         """
         
         messages = [{"role": "system", "content": system_prompt}]
@@ -88,7 +90,6 @@ def save_leads():
     try:
         data = request.get_json()
         leads_list = data.get('leads')
-        
         if not leads_list:
             return jsonify({"error": "No leads found to save"}), 400
 
@@ -98,28 +99,9 @@ def save_leads():
             dict_writer = csv.DictWriter(output_file, fieldnames=keys)
             dict_writer.writeheader()
             dict_writer.writerows(leads_list)
-            
         return jsonify({"message": f"Success! Leads saved to {filename}"})
     except Exception as e:
-        print(f"Save Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000)
-    
-def generate_sales_pitch(lead_info, product_details):
-    prompt = f"""
-    You are a world-class AI Sales Closer. 
-    Based on this Lead Info: {lead_info}
-    And these Product Details: {product_details}
-    
-    Write a highly personalized, short, and punchy sales message. 
-    The goal is to show how our product solves their specific problem.
-    Keep the tone professional yet friendly. Use the language of the lead's location.
-    """
-    
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
