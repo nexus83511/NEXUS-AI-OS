@@ -2,6 +2,7 @@ import os
 import json
 import requests
 import csv
+import PyPDF2  # PDF parhne ke liye
 from flask import Flask, request, jsonify, render_template, session
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -32,13 +33,38 @@ def search_leads(query):
 def home():
     return render_template('index.html')
 
+# --- NAYA ROUTE: PDF Upload aur Text Extraction ---
+@app.route('/upload-pdf', methods=['POST'])
+def upload_pdf():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+
+        if file:
+            reader = PyPDF2.PdfReader(file)
+            extracted_text = ""
+            # Sari pages se text nikalna
+            for page_num in range(len(reader.pages)):
+                page = reader.pages[page_num]
+                extracted_text += page.extract_text()
+            
+            # Limit text to avoid blowing up the context (approx 5000 chars)
+            return jsonify({"text": extracted_text[:7000]})
+            
+    except Exception as e:
+        print(f"PDF Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/ask-agent', methods=['POST'])
 def ask_agent():
     try:
         data = request.get_json()
         user_query = data.get('message')
         
-        # Frontend se Sales Context aur Knowledge Base dono lena
         product_context = data.get('product_context', 'Nexus AI-OS Automation Services')
         kb_context = data.get('kb_context', 'No specific company data provided.')
 
@@ -51,8 +77,6 @@ def ask_agent():
             if raw_results:
                 search_data = f"\n\nReal-time Search Results: {json.dumps(raw_results)[:2000]}"
 
-        # --- HYBRID KNOWLEDGE PROMPT ---
-        # Ab AI ko pata hoga ke Sales Pitch kahan se leni hai aur Support Info kahan se
         system_prompt = f"""
         You are the Nexus Autonomous Sales & Support Engine. 
         
