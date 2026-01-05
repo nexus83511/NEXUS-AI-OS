@@ -23,16 +23,22 @@
         #messages::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 10px; }
         .ai-msg-bubble { background: rgba(51, 65, 85, 0.5); border: 1px solid rgba(255,255,255,0.05); }
         .user-msg-bubble { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); }
+        
+        /* New Training Section Styles */
         .training-input {
             background: rgba(15, 23, 42, 0.8);
             border: 1px solid rgba(56, 189, 248, 0.2);
             transition: all 0.3s ease;
         }
+        .training-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+        }
     </style>
 </head>
 <body class="flex flex-col items-center p-4 md:p-8">
 
-    <header class="mb-10 text-center">
+    <header class="mb-10 text-center animate-fade-in">
         <h1 class="text-6xl font-extrabold tracking-tighter text-white mb-2">
             NEXUS <span class="text-sky-400">AI-OS</span>
         </h1>
@@ -51,13 +57,13 @@
             <label class="block text-sky-400 text-xs font-bold uppercase tracking-widest mb-2">🚀 AI Sales Brain (Product Training)</label>
             <textarea id="productDetails" 
                 class="w-full training-input rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none h-20 resize-none"
-                placeholder="Train your AI: What are you selling?"></textarea>
+                placeholder="Train your AI: What are you selling? (e.g., We provide SEO services for $100/month for dentists in Europe)"></textarea>
         </div>
 
         <div id="messages" class="h-[400px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
             <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
                 <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
-                Greetings, Commander. Train my brain above, then tell me which market we shall dominate today.
+                Greetings, Commander. Train my brain with your product above, then tell me which market we shall dominate today.
             </div>
         </div>
         
@@ -67,29 +73,34 @@
                     class="flex-grow bg-slate-900/80 border border-slate-700 p-4 rounded-2xl focus:outline-none focus:border-sky-500 transition-all text-white placeholder-slate-500" 
                     placeholder="Enter industry or target location...">
                 <button onclick="sendMessage()" 
-                    class="bg-sky-500 hover:bg-sky-400 text-slate-900 font-bold px-10 rounded-2xl transition-all transform active:scale-95 shadow-lg shadow-sky-500/20">
+                    class="bg-sky-500 hover:bg-sky-400 text-slate-900 font-bold px-10 rounded-2xl transition-all transform active:scale-95 shadow-lg shadow-sky-500/20 uppercase tracking-tight">
                     Analyze
                 </button>
             </div>
             
             <div class="flex flex-wrap gap-2">
-                <button onclick="quickAction('Find 5 dental clinics in Barcelona')" class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300">🔍 Find Leads</button>
-                <button onclick="quickAction('Draft a professional pitch using my product info')" class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300">📱 Sales Pitch</button>
-                <button onclick="saveToCSV()" id="save-btn" class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full hidden font-bold">💾 Export CSV</button>
+                <button onclick="quickAction('Find 5 dental clinics in Barcelona')" 
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
+                    🔍 Find Leads
+                </button>
+                <button onclick="quickAction('Draft a professional WhatsApp pitch using my product info')" 
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full transition-all text-slate-300 font-semibold">
+                    📱 Sales Pitch
+                </button>
+                <button onclick="saveToCSV()" id="save-btn" 
+                    class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full transition-all hidden font-bold">
+                    💾 Export CSV Database
+                </button>
             </div>
         </div>
     </div>
 
+    <footer class="mt-8 text-slate-500 text-xs tracking-widest uppercase">
+        Nexus AI-OS &copy; 2026 | Built for Hyper-Growth
+    </footer>
+
     <script>
         let lastLeads = []; 
-
-        // FIX: Enter key function yahan script ke andar honi chahiye
-        document.getElementById("userInput").addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                event.preventDefault();
-                sendMessage();
-            }
-        });
 
         function quickAction(cmd) {
             document.getElementById('userInput').value = cmd;
@@ -106,28 +117,27 @@
             const text = input.value;
             const productInfo = product.value;
 
-            messages.innerHTML += `<div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">${text}</div>`;
+            messages.innerHTML += `
+                <div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">
+                    ${text}
+                </div>`;
             input.value = '';
 
-            try {
-                const response = await fetch('/ask-agent', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        message: text,
-                        product_context: productInfo 
-                    })
-                });
-                const data = await response.json();
+            const response = await fetch('/ask-agent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    message: text,
+                    product_context: productInfo // Sending product info to backend
+                })
+            });
+            const data = await response.json();
 
-                messages.innerHTML += `
-                    <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
-                        <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
-                        ${data.reply ? data.reply.replace(/\n/g, '<br>') : "Error: No response"}
-                    </div>`;
-            } catch (err) {
-                console.error("Fetch Error:", err);
-            }
+            messages.innerHTML += `
+                <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed">
+                    <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider">Nexus System</b>
+                    ${data.reply.replace(/\n/g, '<br>')}
+                </div>`;
             
             messages.scrollTop = messages.scrollHeight;
 
@@ -144,7 +154,7 @@
                 body: JSON.stringify({ leads: lastLeads })
             });
             const result = await response.json();
-            alert("Database Exported!");
+            alert("Database Exported: " + (result.message || result.error));
         }
     </script>
 </body>
