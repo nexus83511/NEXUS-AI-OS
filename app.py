@@ -37,8 +37,10 @@ def ask_agent():
     try:
         data = request.get_json()
         user_query = data.get('message')
-        # Frontend se product information pakarna
+        
+        # Frontend se Sales Context aur Knowledge Base dono lena
         product_context = data.get('product_context', 'Nexus AI-OS Automation Services')
+        kb_context = data.get('kb_context', 'No specific company data provided.')
 
         if 'chat_history' not in session:
             session['chat_history'] = []
@@ -49,32 +51,26 @@ def ask_agent():
             if raw_results:
                 search_data = f"\n\nReal-time Search Results: {json.dumps(raw_results)[:2000]}"
 
-        # --- ADVANCED POWER PROMPT ---
-        # Is mein WhatsApp, Support AI aur Booking ki logic add kardi hai
+        # --- HYBRID KNOWLEDGE PROMPT ---
+        # Ab AI ko pata hoga ke Sales Pitch kahan se leni hai aur Support Info kahan se
         system_prompt = f"""
-        You are the Nexus Autonomous Sales Engine. 
-        Your CURRENT MISSION is to sell these core services: {product_context}
+        You are the Nexus Autonomous Sales & Support Engine. 
         
-        Our specialized solutions include:
-        1. WhatsApp AI Bots (Automated customer chat)
-        2. Customer Support AI (24/7 smart response)
-        3. Appointment Booking AI (Automated scheduling)
-        4. Lead Generation AI (Automating the hunt for clients)
+        MISSION 1 (SALES): Sell this product/service: {product_context}
+        MISSION 2 (SUPPORT): Use this 'Company Knowledge Base' for specific business facts: {kb_context}
 
-        When you find businesses:
-        - List their Name, Website, and a 'Pain Point' analysis.
-        - Solution: Explain how our {product_context} (specifically AI Bots or Booking) fixes their problem.
-        - ROI: Tell them how much time or manual labor they save.
-        
-        If the user asks for a WhatsApp message or Email, draft a 'High-Converting Pitch'. 
-        Be professional, sharp, and results-oriented.
+        OPERATING RULES:
+        - If the user asks about pricing, services, or how the company works, refer ONLY to the Knowledge Base.
+        - If the user wants to find clients, use the search data to pitch {product_context}.
+        - Always provide ROI and be professional.
+        - If information is missing from the Knowledge Base, politely say you'll check with the team.
         """
         
         messages = [{"role": "system", "content": system_prompt}]
         for msg in session['chat_history']:
             messages.append(msg)
         
-        final_prompt = user_query + (f"\nUse this real-time data to analyze and pitch: {search_data}" if search_data else "")
+        final_prompt = user_query + (f"\nReal-time Data: {search_data}" if search_data else "")
         messages.append({"role": "user", "content": final_prompt})
 
         response = client.chat.completions.create(
