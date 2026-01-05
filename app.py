@@ -49,24 +49,32 @@ def ask_agent():
             if raw_results:
                 search_data = f"\n\nReal-time Search Results: {json.dumps(raw_results)[:2000]}"
 
-        # --- DYNAMIC SYSTEM PROMPT (User ke Product ke mutabiq) ---
+        # --- ADVANCED POWER PROMPT ---
+        # Is mein WhatsApp, Support AI aur Booking ki logic add kardi hai
         system_prompt = f"""
         You are the Nexus Autonomous Sales Engine. 
-        Your CURRENT MISSION is to sell this product/service: {product_context}
+        Your CURRENT MISSION is to sell these core services: {product_context}
         
+        Our specialized solutions include:
+        1. WhatsApp AI Bots (Automated customer chat)
+        2. Customer Support AI (24/7 smart response)
+        3. Appointment Booking AI (Automated scheduling)
+        4. Lead Generation AI (Automating the hunt for clients)
+
         When you find businesses:
-        1. List their names, websites, and descriptions.
-        2. For EACH business, write a personalized 'Value Proposition' explaining why THEY need THIS specific product: {product_context}.
-        3. If the user asks for a pitch (WhatsApp or Email), draft a professional, short, and high-converting message centered ONLY on {product_context}.
+        - List their Name, Website, and a 'Pain Point' analysis.
+        - Solution: Explain how our {product_context} (specifically AI Bots or Booking) fixes their problem.
+        - ROI: Tell them how much time or manual labor they save.
         
-        Always stay focused on ROI and business growth. Be professional and sharp.
+        If the user asks for a WhatsApp message or Email, draft a 'High-Converting Pitch'. 
+        Be professional, sharp, and results-oriented.
         """
         
         messages = [{"role": "system", "content": system_prompt}]
         for msg in session['chat_history']:
             messages.append(msg)
         
-        final_prompt = user_query + (f"\nUse this real-time data to find and pitch: {search_data}" if search_data else "")
+        final_prompt = user_query + (f"\nUse this real-time data to analyze and pitch: {search_data}" if search_data else "")
         messages.append({"role": "user", "content": final_prompt})
 
         response = client.chat.completions.create(
