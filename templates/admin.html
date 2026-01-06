@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nexus Admin | Control Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%); 
+        }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="text-white min-h-screen p-6 md:p-12">
+    <div class="max-w-5xl mx-auto">
+        
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-black tracking-tighter text-sky-400">COMMAND <span class="text-white">CENTER</span></h1>
+                <p class="text-slate-400 text-xs mt-1 uppercase tracking-widest font-bold">Nexus AI-OS Management</p>
+            </div>
+            <a href="/" class="glass px-6 py-2.5 rounded-xl hover:bg-sky-500 hover:text-slate-900 transition-all text-xs font-bold uppercase tracking-widest">
+                Return to Base
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="glass p-6 rounded-3xl">
+                <p class="text-slate-400 text-xs font-bold uppercase mb-2">Total Operatives</p>
+                <h3 class="text-3xl font-black text-white">{{ users_data|length }}</h3>
+            </div>
+            <div class="glass p-6 rounded-3xl">
+                <p class="text-slate-400 text-xs font-bold uppercase mb-2">System Status</p>
+                <h3 class="text-3xl font-black text-green-400">ACTIVE</h3>
+            </div>
+        </div>
+
+        <div class="glass rounded-[40px] overflow-hidden shadow-2xl">
+            <div class="p-8 border-b border-white/5 bg-white/5">
+                <h2 class="text-xl font-bold">Registered Operatives</h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-900/50 text-slate-400 text-[10px] uppercase font-black tracking-widest">
+                        <tr>
+                            <th class="p-6">ID</th>
+                            <th class="p-6">Username</th>
+                            <th class="p-6">Role</th>
+                            <th class="p-6 text-center">Total Leads</th>
+                            <th class="p-6 text-right">System Access</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        {% for user, stats in users_data %}
+                        <tr class="hover:bg-white/5 transition-all group">
+                            <td class="p-6 text-slate-500 font-mono text-sm">{{ user.id }}</td>
+                            <td class="p-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-400 font-bold text-xs">
+                                        {{ user.username[0]|upper }}
+                                    </div>
+                                    <span class="font-bold text-slate-200">{{ user.username }}</span>
+                                </div>
+                            </td>
+                            <td class="p-6">
+                                <span class="px-3 py-1 rounded-full text-[9px] font-black tracking-tighter {{ 'bg-sky-500/20 text-sky-400' if user.is_admin else 'bg-slate-700/50 text-slate-400' }}">
+                                    {{ 'ADMIN' if user.is_admin else 'FIELD AGENT' }}
+                                </span>
+                            </td>
+                            <td class="p-6 text-center">
+                                <span class="text-xl font-black text-sky-400 font-mono">{{ stats.total_saved }}</span>
+                                <p class="text-[9px] text-slate-500 uppercase font-bold mt-1">Extracted</p>
+                            </td>
+                            <td class="p-6 text-right">
+                                {% if not user.is_admin %}
+                                <button class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-4 py-2 rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest">
+                                    Terminate
+                                </button>
+                                {% else %}
+                                <span class="text-[10px] text-slate-600 font-bold uppercase italic">Protected</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <p class="text-center mt-10 text-slate-600 text-[10px] uppercase tracking-widest font-bold">Nexus AI-OS Security Layer 4.0 // Secured Connection</p>
+    </div>
+</body>
+</html>

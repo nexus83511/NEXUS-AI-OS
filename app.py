@@ -24,13 +24,21 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# User Model
+# --- Database Models ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    # Relationship to leads
+    leads_count = db.relationship('LeadStats', backref='owner', lazy=True)
 
-# Create Database
+class LeadStats(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    total_saved = db.Column(db.Integer, default=0)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+# Create Database Tables
 with app.app_context():
     db.create_all()
 
@@ -51,7 +59,6 @@ def home():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # Dono formats handle karne ke liye (JSON aur Form)
         if request.is_json:
             data = request.get_json()
             username = data.get('username')
@@ -83,9 +90,17 @@ def signup():
             flash('Username already exists!')
         else:
             hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
-            new_user = User(username=username, password=hashed_pw)
+            admin_status = True if username.lower() == 'admin' else False
+            
+            new_user = User(username=username, password=hashed_pw, is_admin=admin_status)
             db.session.add(new_user)
             db.session.commit()
+            
+            # Initializing lead stats for the new user
+            new_stats = LeadStats(total_saved=0, user_id=new_user.id)
+            db.session.add(new_stats)
+            db.session.commit()
+            
             flash('Account created! Please login.')
             return redirect(url_for('login'))
     return render_template('signup.html')
@@ -95,6 +110,17 @@ def signup():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+# --- Admin Panel Route ---
+@app.route('/admin-panel')
+@login_required
+def admin_panel():
+    if not current_user.is_admin:
+        return "Access Denied: Commanders Only!", 403
+    
+    # Joining User and LeadStats to get lead counts in one go
+    users_data = db.session.query(User, LeadStats).join(LeadStats, User.id == LeadStats.user_id).all()
+    return render_template('admin.html', users_data=users_data)
 
 # --- AI & Business Logic Routes (Login Required) ---
 
@@ -171,6 +197,13 @@ def save_leads():
         data = request.get_json()
         leads_list = data.get('leads')
         if not leads_list: return jsonify({"error": "No leads"}), 400
+        
+        # --- Update Lead Stats in Database ---
+        stats = LeadStats.query.filter_by(user_id=current_user.id).first()
+        if stats:
+            stats.total_saved += len(leads_list)
+            db.session.commit()
+        
         filename = f"leads_{current_user.username}.csv"
         keys = leads_list[0].keys()
         with open(filename, 'w', newline='', encoding='utf-8') as output_file:
