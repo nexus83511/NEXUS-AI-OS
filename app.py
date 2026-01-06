@@ -18,8 +18,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # --- ElevenLabs Settings ---
 # Note: Render ke Environment Variables mein ELEVENLABS_API_KEY lazmi set karein.
 # Agar code mein direct dalni hai toh niche wali line use karein:
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "sk_6de22baaec0b969bb12f78f7a40b5debca003787989082d1")
-VOICE_ID = "21m00Tcm4TlvDq8ikWAM" # Josh Voice ID
+
 
 # --- Login Logic ---
 MASTER_PASSWORD = "admin786"
@@ -44,41 +43,6 @@ def logout():
     return redirect(url_for('home'))
 
 # --- ElevenLabs Voice AI Route ---
-@app.route('/get-voice', methods=['POST'])
-def get_voice():
-    try:
-        data = request.get_json()
-        text = data.get('text')
-        
-        # Debugging: Check if API key is being read
-        print(f"DEBUG: Using Key starting with: {ELEVENLABS_API_KEY[:5]}...")
-
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
-        headers = {
-            "Accept": "audio/mpeg",
-            "Content-Type": "application/json",
-            "xi-api-key": ELEVENLABS_API_KEY
-        }
-        # Model change: v1 ki jagah v2 try karte hain (Behtar hai)
-        payload = {
-            "text": text,
-            "model_id": "eleven_multilingual_v2", 
-            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
-        }
-
-        response = requests.post(url, json=payload, headers=headers)
-        
-        if response.status_code == 200:
-            return response.content, 200, {'Content-Type': 'audio/mpeg'}
-        else:
-            # YE LINE IMPORTANT HAI: Render Logs mein error check karein
-            error_msg = response.text
-            print(f"CRITICAL ERROR: ElevenLabs Response: {error_msg}")
-            return jsonify({"error": "ElevenLabs API Error", "details": error_msg}), response.status_code
-
-    except Exception as e:
-        print(f"SYSTEM ERROR: {str(e)}")
-        return jsonify({"error": str(e)}), 500
 
 # --- PDF Upload aur Text Extraction ---
 @app.route('/upload-pdf', methods=['POST'])

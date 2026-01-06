@@ -172,7 +172,6 @@
         let lastLeads = []; 
         let leadsFoundCount = 0;
         let pitchesMadeCount = 0;
-        let currentAudio = null;
 
         function toggleTheme() {
             document.body.classList.toggle('light-mode');
@@ -184,44 +183,43 @@
             }
         }
 
-        async function playAIVoice(button, textToSpeak) {
+        // --- NEW BROWSER-BASED FREE VOICE (FEMALE) ---
+        function playAIVoice(button, textToSpeak) {
             const originalText = button.innerHTML;
-            button.innerText = "⌛ Generating...";
+            button.innerText = "⌛ Speaking...";
             button.disabled = true;
 
-            try {
-                const response = await fetch('/get-voice', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: textToSpeak })
-                });
+            // Stop any current speech
+            window.speechSynthesis.cancel();
 
-                if (!response.ok) throw new Error("Voice failed");
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            const voices = window.speechSynthesis.getVoices();
+            
+            // Try to find a good female voice
+            const femaleVoice = voices.find(v => 
+                (v.name.includes('Female') || v.name.includes('Google US English') || v.name.includes('Zira') || v.name.includes('Samantha'))
+            );
 
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                if (currentAudio) currentAudio.pause();
-                currentAudio = new Audio(url);
-                
-                button.innerText = "🔊 Playing...";
-                currentAudio.play();
-                
-                currentAudio.onended = () => {
-                    button.innerHTML = originalText;
-                    button.disabled = false;
-                };
-            } catch (e) {
-                alert("Voice Error: Check ElevenLabs API Key in Render");
+            if (femaleVoice) utterance.voice = femaleVoice;
+            
+            utterance.pitch = 1.1; // Slightly higher for female tone
+            utterance.rate = 1.0;
+
+            utterance.onend = () => {
                 button.innerHTML = originalText;
                 button.disabled = false;
-            }
+            };
+
+            utterance.onerror = () => {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            };
+
+            window.speechSynthesis.speak(utterance);
         }
 
         function stopVoice() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-            }
+            window.speechSynthesis.cancel();
         }
 
         document.getElementById("userInput").addEventListener("keypress", function(event) {
@@ -297,7 +295,7 @@
             messages.innerHTML += `
                 <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm border-l-2 border-sky-400">
                     <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider font-bold">Nexus Intelligence</b>
-                    <div id="text-content">${data.reply.replace(/\n/g, '<br>')}</div>
+                    <div class="text-content">${data.reply.replace(/\n/g, '<br>')}</div>
                     <button onclick="playAIVoice(this, '${cleanReply}')" 
                         class="mt-3 text-[10px] bg-sky-500/20 hover:bg-sky-500/40 text-sky-400 px-3 py-1 rounded-lg border border-sky-500/30 transition-all font-bold flex items-center gap-2">
                         <span>🔊</span> LISTEN TO AI
@@ -315,7 +313,7 @@
         async function promptEmail() {
             const email = prompt("Enter recipient email:");
             if(!email) return;
-            const msgBubbles = document.querySelectorAll('#text-content');
+            const msgBubbles = document.querySelectorAll('.text-content');
             const body = msgBubbles[msgBubbles.length - 1].innerText;
             
             const res = await fetch('/send-email', {
@@ -328,7 +326,7 @@
         }
 
         function sendWhatsApp() {
-            const msgBubbles = document.querySelectorAll('#text-content');
+            const msgBubbles = document.querySelectorAll('.text-content');
             if (msgBubbles.length === 0) { alert("Please generate a pitch first!"); return; }
             const lastMessage = msgBubbles[msgBubbles.length - 1].innerText;
             window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(lastMessage.trim())}`, '_blank');
@@ -342,6 +340,9 @@
             });
             alert("Database Exported!");
         }
+
+        // Initialize voices
+        window.speechSynthesis.getVoices();
     </script>
 </body>
 </html>
