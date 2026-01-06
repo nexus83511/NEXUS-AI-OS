@@ -17,7 +17,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- ElevenLabs Settings ---
 # Aap apni pasand ki Voice ID yahan badal sakte hain
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+ELEVENLABS_API_KEY ="sk_660badb8c49037ae280233ad55df7d8adf6e333c6e6e0d82"
 VOICE_ID = "TxGEqn7nUAn3W6E29vgf" # Default: Josh
 
 # --- Login Logic ---
