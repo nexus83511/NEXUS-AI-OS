@@ -3,16 +3,57 @@ import json
 import requests
 import csv
 import PyPDF2  # PDF parhne ke liye
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = "nexus_secret_key_123_abc" 
+# Secret key ko session management ke liye thoda upgrade kiya
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "nexus_secret_key_123_abc") 
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# --- Login Logic ---
+MASTER_PASSWORD = "admin786" # Aapka password
+
+@app.route('/')
+def home():
+    # Agar user login nahi hai toh login page dikhao
+    if not session.get('logged_in'):
+        return render_template('login.html')
+    return render_template('index.html')
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    if data.get('password') == MASTER_PASSWORD:
+        session['logged_in'] = True
+        return jsonify({"success": True})
+    return jsonify({"success": False, "message": "Invalid Password"})
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('home'))
+
+# --- Email Automation Route ---
+@app.route('/send-email', methods=['POST'])
+def send_email():
+    try:
+        data = request.get_json()
+        recipient = data.get('email')
+        subject = data.get('subject', 'Business Proposal from Nexus AI')
+        body = data.get('body')
+
+        # Hum Mailgun ya SendGrid use kar sakte hain, abhi ke liye dummy response
+        # Aapko yahan apna email API key lagana hoga
+        print(f"Sending Email to {recipient} with body: {body[:50]}...")
+        
+        return jsonify({"message": "Email sent successfully (Simulated)!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # --- Function: Google Search Leads ---
 def search_leads(query):
@@ -29,10 +70,6 @@ def search_leads(query):
         print(f"Search Error: {e}")
         return None
 
-@app.route('/')
-def home():
-    return render_template('index.html')
-
 # --- NAYA ROUTE: PDF Upload aur Text Extraction ---
 @app.route('/upload-pdf', methods=['POST'])
 def upload_pdf():
@@ -47,12 +84,10 @@ def upload_pdf():
         if file:
             reader = PyPDF2.PdfReader(file)
             extracted_text = ""
-            # Sari pages se text nikalna
             for page_num in range(len(reader.pages)):
                 page = reader.pages[page_num]
                 extracted_text += page.extract_text()
             
-            # Limit text to avoid blowing up the context (approx 5000 chars)
             return jsonify({"text": extracted_text[:7000]})
             
     except Exception as e:

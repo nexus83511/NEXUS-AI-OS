@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     
     <style>
-        /* 🎨 Themes Logic - Kuch delete nahi kiya, bas colors ko variables mein dala hai */
         :root {
             --bg-main: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
             --card-bg: rgba(30, 41, 59, 0.6);
@@ -53,11 +52,18 @@
 </head>
 <body class="flex flex-col items-center p-4 md:p-8">
 
-    <button onclick="toggleTheme()" class="fixed top-5 right-5 z-50 p-3 rounded-full bg-slate-800 border border-slate-700 text-sky-400 hover:scale-110 transition-all shadow-2xl">
-        <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-    </button>
+    <div class="fixed top-5 right-5 z-50 flex gap-3">
+        <a href="/logout" class="p-3 rounded-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+        </a>
+        <button onclick="toggleTheme()" class="p-3 rounded-full bg-slate-800 border border-slate-700 text-sky-400 hover:scale-110 transition-all shadow-2xl">
+            <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        </button>
+    </div>
 
     <header class="mb-10 text-center animate-fade-in">
         <h1 class="text-6xl font-extrabold tracking-tighter mb-2">
@@ -134,13 +140,17 @@
                     class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300 font-semibold transition-all">
                     🔍 Find Leads
                 </button>
-                <button onclick="quickAction('Draft a professional WhatsApp pitch using my product info')" 
+                <button onclick="quickAction('Draft a professional pitch using my product info')" 
                     class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300 font-semibold transition-all">
                     📱 Sales Pitch
                 </button>
                 <button onclick="sendWhatsApp()" 
                     class="bg-green-600/20 hover:bg-green-600/40 border border-green-500 text-green-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
-                    🚀 Launch WhatsApp
+                    🚀 WhatsApp
+                </button>
+                <button onclick="promptEmail()" 
+                    class="bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500 text-blue-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
+                    📧 Send Email
                 </button>
                 <button onclick="stopVoice()" class="bg-red-500/10 hover:bg-red-500/30 border border-red-500 text-red-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
                     🔇 Stop Voice
@@ -153,8 +163,9 @@
         </div>
     </div>
 
-    <footer class="mt-8 text-slate-500 text-xs tracking-widest uppercase">
-        Nexus AI-OS &copy; 2026 | Built for Hyper-Growth
+    <footer class="mt-8 text-slate-500 text-xs tracking-widest uppercase text-center">
+        Nexus AI-OS &copy; 2026 | Built for Hyper-Growth<br>
+        <span class="opacity-50 text-[10px]">Secure Session Active</span>
     </footer>
 
     <script>
@@ -163,7 +174,6 @@
         let pitchesMadeCount = 0;
         let synthesis = window.speechSynthesis;
 
-        // 🌗 Toggle Theme Function
         function toggleTheme() {
             document.body.classList.toggle('light-mode');
             const icon = document.getElementById('themeIcon');
@@ -174,9 +184,8 @@
             }
         }
 
-        // 🎙️ Voice Logic
         function speak(text) {
-            synthesis.cancel(); // Pehle wali awaz band karo
+            synthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             msg.rate = 1.0;
             msg.pitch = 1.0;
@@ -199,22 +208,16 @@
             const fileInput = document.getElementById('pdfFile');
             const kbBox = document.getElementById('knowledgeBase');
             const btn = document.getElementById('uploadBtn');
-
             if (fileInput.files.length === 0) {
                 alert("Please select a PDF file first.");
                 return;
             }
-
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             btn.innerText = "READING...";
             btn.disabled = true;
-            
             try {
-                const response = await fetch('/upload-pdf', {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch('/upload-pdf', { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.text) {
                     kbBox.value = data.text;
@@ -238,13 +241,10 @@
             const product = document.getElementById('productDetails');
             const kb = document.getElementById('knowledgeBase');
             const messages = document.getElementById('messages');
-            
             if(!input.value) return;
-
             const text = input.value;
             messages.innerHTML += `<div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">${text}</div>`;
             input.value = '';
-
             if(text.toLowerCase().includes('find') || text.toLowerCase().includes('leads')) {
                 leadsFoundCount += 5;
                 document.getElementById('leadCount').innerText = leadsFoundCount;
@@ -253,49 +253,49 @@
                 pitchesMadeCount += 1;
                 document.getElementById('pitchCount').innerText = pitchesMadeCount;
             }
-
             const response = await fetch('/ask-agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: text,
-                    product_context: product.value,
-                    kb_context: kb.value 
-                })
+                body: JSON.stringify({ message: text, product_context: product.value, kb_context: kb.value })
             });
             const data = await response.json();
-
             messages.innerHTML += `
                 <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed border-l-2 border-sky-400">
                     <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider font-bold">Nexus Intelligence</b>
                     ${data.reply.replace(/\n/g, '<br>')}
                 </div>`;
-            
             messages.scrollTop = messages.scrollHeight;
-
-            // 🎙️ AI Voice Call
             speak(data.reply);
-
             if(text.toLowerCase().includes('find') || text.toLowerCase().includes('leads')) {
                 document.getElementById('save-btn').classList.remove('hidden');
                 lastLeads = [{ "Timestamp": new Date().toLocaleString(), "Query": text, "Status": "Verified" }];
             }
         }
 
+        async function promptEmail() {
+            const email = prompt("Enter recipient email:");
+            if(!email) return;
+            const messages = document.querySelectorAll('.ai-msg-bubble');
+            const body = messages[messages.length - 1].innerText.replace('Nexus Intelligence', '');
+            
+            const res = await fetch('/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, body })
+            });
+            const data = await res.json();
+            alert(data.message || data.error);
+        }
+
         function sendWhatsApp() {
             const messages = document.querySelectorAll('.ai-msg-bubble');
-            if (messages.length < 2) {
-                alert("Please generate a pitch first!");
-                return;
-            }
+            if (messages.length < 2) { alert("Please generate a pitch first!"); return; }
             const lastMessage = messages[messages.length - 1].innerText.replace('Nexus Intelligence', '');
-            const encodedMessage = encodeURIComponent(lastMessage.trim());
-            const whatsappUrl = `https://web.whatsapp.com/send?text=${encodedMessage}`;
-            window.open(whatsappUrl, '_blank');
+            window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(lastMessage.trim())}`, '_blank');
         }
 
         async function saveToCSV() {
-            const response = await fetch('/save-leads', {
+            await fetch('/save-leads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ leads: lastLeads })
