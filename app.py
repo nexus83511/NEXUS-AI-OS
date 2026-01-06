@@ -2,7 +2,7 @@ import os
 import json
 import requests
 import csv
-import PyPDF2  # PDF parhne ke liye
+import PyPDF2
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -10,18 +10,19 @@ from openai import OpenAI
 load_dotenv()
 
 app = Flask(__name__)
-# Secret key ko session management ke liye
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "nexus_secret_key_123_abc") 
 
+# OpenAI Client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- ElevenLabs Settings ---
-# Aap apni pasand ki Voice ID yahan badal sakte hain
-ELEVENLABS_API_KEY ="sk_660badb8c49037ae280233ad55df7d8adf6e333c6e6e0d82"
-VOICE_ID = "TxGEqn7nUAn3W6E29vgf" # Default: Josh
+# Note: Render ke Environment Variables mein ELEVENLABS_API_KEY lazmi set karein.
+# Agar code mein direct dalni hai toh niche wali line use karein:
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "sk_660badb8c49037ae280233ad55df7d8adf6e333c6e6e0d82")
+VOICE_ID = "TxGEqn7nUAn3W6E29vgf" # Josh Voice ID
 
 # --- Login Logic ---
-MASTER_PASSWORD = "admin786" # Aapka password
+MASTER_PASSWORD = "admin786"
 
 @app.route('/')
 def home():
@@ -42,65 +43,50 @@ def logout():
     session.clear()
     return redirect(url_for('home'))
 
-# --- NAYA ROUTE: ElevenLabs Voice AI ---
+# --- ElevenLabs Voice AI Route ---
 @app.route('/get-voice', methods=['POST'])
 def get_voice():
     try:
         data = request.get_json()
         text = data.get('text')
         
-        if not ELEVENLABS_API_KEY:
-            return jsonify({"error": "API Key missing"}), 400
+        if not text:
+            return jsonify({"error": "No text provided"}), 400
+
+        # Debugging ke liye print (Render Logs mein dikhayega)
+        print(f"Generating voice for text: {text[:30]}...")
 
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+        
         headers = {
             "Accept": "audio/mpeg",
             "Content-Type": "application/json",
             "xi-api-key": ELEVENLABS_API_KEY
         }
+        
         payload = {
             "text": text,
             "model_id": "eleven_monolingual_v1",
-            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
+            "voice_settings": {
+                "stability": 0.5, 
+                "similarity_boost": 0.75
+            }
         }
 
         response = requests.post(url, json=payload, headers=headers)
         
         if response.status_code == 200:
+            print("Voice generation successful!")
             return response.content, 200, {'Content-Type': 'audio/mpeg'}
         else:
-            return jsonify({"error": "ElevenLabs API Error"}), response.status_code
+            # ElevenLabs ki taraf se error details
+            error_info = response.json() if response.content else "Unknown Error"
+            print(f"ElevenLabs API Error: {response.status_code} - {error_info}")
+            return jsonify({"error": "ElevenLabs API Error", "details": error_info}), response.status_code
 
     except Exception as e:
+        print(f"System Error in /get-voice: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-# --- Email Automation Route ---
-@app.route('/send-email', methods=['POST'])
-def send_email():
-    try:
-        data = request.get_json()
-        recipient = data.get('email')
-        subject = data.get('subject', 'Business Proposal from Nexus AI')
-        body = data.get('body')
-        print(f"Sending Email to {recipient}...")
-        return jsonify({"message": "Email sent successfully (Simulated)!"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# --- Function: Google Search Leads ---
-def search_leads(query):
-    url = "https://google.serper.dev/search"
-    payload = json.dumps({"q": query})
-    headers = {
-        'X-API-KEY': os.getenv("SERPER_API_KEY"),
-        'Content-Type': 'application/json'
-    }
-    try:
-        response = requests.request("POST", url, headers=headers, data=payload)
-        return response.json()
-    except Exception as e:
-        print(f"Search Error: {e}")
-        return None
 
 # --- PDF Upload aur Text Extraction ---
 @app.route('/upload-pdf', methods=['POST'])
@@ -111,15 +97,37 @@ def upload_pdf():
         file = request.files['file']
         if file.filename == '':
             return jsonify({"error": "No selected file"}), 400
-        if file:
-            reader = PyPDF2.PdfReader(file)
-            extracted_text = ""
-            for page in reader.pages:
-                extracted_text += page.extract_text()
-            return jsonify({"text": extracted_text[:7000]})
+        
+        reader = PyPDF2.PdfReader(file)
+        extracted_text = ""
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                extracted_text += text
+        return jsonify({"text": extracted_text[:7000]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# --- Search Leads Function ---
+def search_leads(query):
+    api_key = os.getenv("SERPER_API_KEY")
+    if not api_key:
+        return {"error": "Serper API key missing"}
+        
+    url = "https://google.serper.dev/search"
+    payload = json.dumps({"q": query})
+    headers = {
+        'X-API-KEY': api_key,
+        'Content-Type': 'application/json'
+    }
+    try:
+        response = requests.post(url, headers=headers, data=payload)
+        return response.json()
+    except Exception as e:
+        print(f"Search Error: {e}")
+        return None
+
+# --- AI Agent Logic ---
 @app.route('/ask-agent', methods=['POST'])
 def ask_agent():
     try:
@@ -135,12 +143,12 @@ def ask_agent():
         if any(word in user_query.lower() for word in ["find", "search", "leads"]):
             raw_results = search_leads(user_query)
             if raw_results:
-                search_data = f"\n\nSearch: {json.dumps(raw_results)[:2000]}"
+                search_data = f"\n\nSearch Results: {json.dumps(raw_results)[:1500]}"
 
-        system_prompt = f"You are Nexus AI. Product: {product_context}. Knowledge: {kb_context}."
+        system_prompt = f"You are Nexus AI, a professional sales engine. Context: {product_context}. Knowledge: {kb_context}."
         
         messages = [{"role": "system", "content": system_prompt}]
-        for msg in session['chat_history']:
+        for msg in session['chat_history'][-5:]: # Last 5 messages for memory
             messages.append(msg)
         messages.append({"role": "user", "content": user_query + search_data})
 
@@ -155,11 +163,15 @@ def ask_agent():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# --- Save Leads to CSV ---
 @app.route('/save-leads', methods=['POST'])
 def save_leads():
     try:
         data = request.get_json()
         leads_list = data.get('leads')
+        if not leads_list:
+            return jsonify({"error": "No leads to save"}), 400
+            
         filename = "nexus_leads.csv"
         keys = leads_list[0].keys()
         with open(filename, 'w', newline='', encoding='utf-8') as output_file:
