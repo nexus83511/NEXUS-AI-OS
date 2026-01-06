@@ -50,42 +50,34 @@ def get_voice():
         data = request.get_json()
         text = data.get('text')
         
-        if not text:
-            return jsonify({"error": "No text provided"}), 400
-
-        # Debugging ke liye print (Render Logs mein dikhayega)
-        print(f"Generating voice for text: {text[:30]}...")
+        # Debugging: Check if API key is being read
+        print(f"DEBUG: Using Key starting with: {ELEVENLABS_API_KEY[:5]}...")
 
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
-        
         headers = {
             "Accept": "audio/mpeg",
             "Content-Type": "application/json",
             "xi-api-key": ELEVENLABS_API_KEY
         }
-        
+        # Model change: v1 ki jagah v2 try karte hain (Behtar hai)
         payload = {
             "text": text,
-            "model_id": "eleven_monolingual_v1",
-            "voice_settings": {
-                "stability": 0.5, 
-                "similarity_boost": 0.75
-            }
+            "model_id": "eleven_multilingual_v2", 
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
         }
 
         response = requests.post(url, json=payload, headers=headers)
         
         if response.status_code == 200:
-            print("Voice generation successful!")
             return response.content, 200, {'Content-Type': 'audio/mpeg'}
         else:
-            # ElevenLabs ki taraf se error details
-            error_info = response.json() if response.content else "Unknown Error"
-            print(f"ElevenLabs API Error: {response.status_code} - {error_info}")
-            return jsonify({"error": "ElevenLabs API Error", "details": error_info}), response.status_code
+            # YE LINE IMPORTANT HAI: Render Logs mein error check karein
+            error_msg = response.text
+            print(f"CRITICAL ERROR: ElevenLabs Response: {error_msg}")
+            return jsonify({"error": "ElevenLabs API Error", "details": error_msg}), response.status_code
 
     except Exception as e:
-        print(f"System Error in /get-voice: {str(e)}")
+        print(f"SYSTEM ERROR: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # --- PDF Upload aur Text Extraction ---
