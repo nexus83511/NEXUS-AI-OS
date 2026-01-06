@@ -9,6 +9,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from openai import OpenAI
+from datetime import datetime
 
 load_dotenv()
 
@@ -30,12 +31,24 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
-    # Relationship to leads
     leads_count = db.relationship('LeadStats', backref='owner', lazy=True)
+    # Relation to lead memories
+    lead_memories = db.relationship('LeadMemory', backref='agent', lazy=True)
 
 class LeadStats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     total_saved = db.Column(db.Integer, default=0)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+# NEW: Lead Memory Table
+class LeadMemory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    lead_identifier = db.Column(db.String(100), nullable=False) # e.g., "Rahul-from-CocaCola"
+    company = db.Column(db.String(100))
+    pain_points = db.Column(db.Text)
+    budget = db.Column(db.String(100))
+    summary = db.Column(db.Text)
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 # Create Database Tables
@@ -96,7 +109,6 @@ def signup():
             db.session.add(new_user)
             db.session.commit()
             
-            # Initializing lead stats for the new user
             new_stats = LeadStats(total_saved=0, user_id=new_user.id)
             db.session.add(new_stats)
             db.session.commit()
@@ -111,18 +123,15 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- Admin Panel Route ---
 @app.route('/admin-panel')
 @login_required
 def admin_panel():
     if not current_user.is_admin:
         return "Access Denied: Commanders Only!", 403
-    
-    # Joining User and LeadStats to get lead counts in one go
     users_data = db.session.query(User, LeadStats).join(LeadStats, User.id == LeadStats.user_id).all()
     return render_template('admin.html', users_data=users_data)
 
-# --- AI & Business Logic Routes (Login Required) ---
+# --- AI & Business Logic Routes ---
 
 @app.route('/upload-pdf', methods=['POST'])
 @login_required
@@ -133,12 +142,8 @@ def upload_pdf():
         file = request.files['file']
         if file.filename == '':
             return jsonify({"error": "No selected file"}), 400
-        
         reader = PyPDF2.PdfReader(file)
-        extracted_text = ""
-        for page in reader.pages:
-            text = page.extract_text()
-            if text: extracted_text += text
+        extracted_text = "".join([page.extract_text() for page in reader.pages if page.extract_text()])
         return jsonify({"text": extracted_text[:7000]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -166,13 +171,27 @@ def ask_agent():
         if 'chat_history' not in session:
             session['chat_history'] = []
 
+        # 1. FETCH MEMORY: Kya is user ke paas is lead ki purani baatein hain?
+        # Hum lead ka naam query se nikaalne ki koshish karte hain
+        lead_memories = LeadMemory.query.filter_by(user_id=current_user.id).all()
+        memory_context = ""
+        if lead_memories:
+            memory_context = "\nYour Memory of previous leads:\n"
+            for m in lead_memories:
+                memory_context += f"- Lead: {m.lead_identifier}, Company: {m.company}, Pain: {m.pain_points}, Budget: {m.budget}, Last Talk: {m.summary}\n"
+
         search_data = ""
         if any(word in user_query.lower() for word in ["find", "search", "leads"]):
             raw_results = search_leads(user_query)
             if raw_results:
                 search_data = f"\n\nSearch Results: {json.dumps(raw_results)[:1500]}"
 
-        system_prompt = f"You are Nexus AI, a professional sales engine. User: {current_user.username}. Product: {product_context}. Knowledge: {kb_context}."
+        system_prompt = f"""You are Nexus AI. 
+        Current User (Agent): {current_user.username}. 
+        Product: {product_context}. 
+        Knowledge: {kb_context}.
+        {memory_context}
+        Strict Rule: Never share lead data between different Agents. If User A talks to Rahul, User B should not know about it."""
         
         messages = [{"role": "system", "content": system_prompt}]
         for msg in session['chat_history'][-5:]:
@@ -182,6 +201,29 @@ def ask_agent():
         response = client.chat.completions.create(model="gpt-4o", messages=messages)
         reply = response.choices[0].message.content
         
+        # 2. AUTOMATIC EXTRACTION: Background mein data nikalna
+        extraction_prompt = f"Analyze this user message: '{user_query}'. If it contains lead info (Name, Company, Pain, Budget), output ONLY a JSON object. If not, output 'NONE'."
+        extract_res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": extraction_prompt}])
+        
+        ext_text = extract_res.choices[0].message.content
+        if "{" in ext_text:
+            try:
+                lead_data = json.loads(ext_text)
+                name = lead_data.get('Name') or lead_data.get('name')
+                if name:
+                    # Update or Create Memory
+                    mem = LeadMemory.query.filter_by(lead_identifier=name, user_id=current_user.id).first()
+                    if not mem:
+                        mem = LeadMemory(lead_identifier=name, user_id=current_user.id)
+                        db.session.add(mem)
+                    
+                    mem.company = lead_data.get('Company', mem.company)
+                    mem.pain_points = lead_data.get('Pain', mem.pain_points)
+                    mem.budget = lead_data.get('Budget', mem.budget)
+                    mem.summary = reply[:200] # Save a snippet of the last talk
+                    db.session.commit()
+            except: pass
+
         session['chat_history'].append({"role": "user", "content": user_query})
         session['chat_history'].append({"role": "assistant", "content": reply})
         session.modified = True 
@@ -197,13 +239,10 @@ def save_leads():
         data = request.get_json()
         leads_list = data.get('leads')
         if not leads_list: return jsonify({"error": "No leads"}), 400
-        
-        # --- Update Lead Stats in Database ---
         stats = LeadStats.query.filter_by(user_id=current_user.id).first()
         if stats:
             stats.total_saved += len(leads_list)
             db.session.commit()
-        
         filename = f"leads_{current_user.username}.csv"
         keys = leads_list[0].keys()
         with open(filename, 'w', newline='', encoding='utf-8') as output_file:
