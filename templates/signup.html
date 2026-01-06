@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nexus AI | Signup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%); }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen text-white">
+    <div class="glass p-8 rounded-3xl w-full max-w-md shadow-2xl">
+        <h1 class="text-4xl font-black text-center mb-2 tracking-tighter">NEXUS <span class="text-sky-400">JOIN</span></h1>
+        <p class="text-slate-400 text-center text-sm mb-8 uppercase tracking-widest font-bold">Create your AI-OS account</p>
+        
+        <form method="POST" class="space-y-4">
+            <input type="text" name="username" placeholder="Choose Username" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl focus:outline-none focus:border-sky-500 text-white" required>
+            <input type="password" name="password" placeholder="Create Password" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl focus:outline-none focus:border-sky-500 text-white" required>
+            <button type="submit" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-900 font-bold py-4 rounded-xl transition-all uppercase tracking-widest">Register Now</button>
+        </form>
+        <p class="mt-6 text-center text-slate-500 text-xs">Already have an account? <a href="/login" class="text-sky-400 font-bold">Login</a></p>
+    </div>
+</body>
+</html>

@@ -3,7 +3,10 @@ import json
 import requests
 import csv
 import PyPDF2
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -12,40 +15,91 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "nexus_secret_key_123_abc") 
 
+# --- Database & Login Configuration ---
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///nexus_users.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# User Model
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+
+# Create Database
+with app.app_context():
+    db.create_all()
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 # OpenAI Client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# --- ElevenLabs Settings ---
-# Note: Render ke Environment Variables mein ELEVENLABS_API_KEY lazmi set karein.
-# Agar code mein direct dalni hai toh niche wali line use karein:
-
-
-# --- Login Logic ---
-MASTER_PASSWORD = "admin786"
+# --- Authentication Routes ---
 
 @app.route('/')
+@login_required
 def home():
-    if not session.get('logged_in'):
-        return render_template('login.html')
-    return render_template('index.html')
+    return render_template('index.html', name=current_user.username)
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    data = request.get_json()
-    if data.get('password') == MASTER_PASSWORD:
-        session['logged_in'] = True
-        return jsonify({"success": True})
-    return jsonify({"success": False, "message": "Invalid Password"})
+    if request.method == 'POST':
+        # Dono formats handle karne ke liye (JSON aur Form)
+        if request.is_json:
+            data = request.get_json()
+            username = data.get('username')
+            password = data.get('password')
+        else:
+            username = request.form.get('username')
+            password = request.form.get('password')
+
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            if request.is_json:
+                return jsonify({"success": True})
+            return redirect(url_for('home'))
+        
+        if request.is_json:
+            return jsonify({"success": False, "message": "Invalid credentials"})
+        flash('Invalid username or password')
+    return render_template('login.html')
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user_exists = User.query.filter_by(username=username).first()
+        if user_exists:
+            flash('Username already exists!')
+        else:
+            hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
+            new_user = User(username=username, password=hashed_pw)
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Account created! Please login.')
+            return redirect(url_for('login'))
+    return render_template('signup.html')
 
 @app.route('/logout')
+@login_required
 def logout():
-    session.clear()
-    return redirect(url_for('home'))
+    logout_user()
+    return redirect(url_for('login'))
 
-# --- ElevenLabs Voice AI Route ---
+# --- AI & Business Logic Routes (Login Required) ---
 
-# --- PDF Upload aur Text Extraction ---
 @app.route('/upload-pdf', methods=['POST'])
+@login_required
 def upload_pdf():
     try:
         if 'file' not in request.files:
@@ -58,33 +112,24 @@ def upload_pdf():
         extracted_text = ""
         for page in reader.pages:
             text = page.extract_text()
-            if text:
-                extracted_text += text
+            if text: extracted_text += text
         return jsonify({"text": extracted_text[:7000]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- Search Leads Function ---
 def search_leads(query):
     api_key = os.getenv("SERPER_API_KEY")
-    if not api_key:
-        return {"error": "Serper API key missing"}
-        
+    if not api_key: return None
     url = "https://google.serper.dev/search"
     payload = json.dumps({"q": query})
-    headers = {
-        'X-API-KEY': api_key,
-        'Content-Type': 'application/json'
-    }
+    headers = {'X-API-KEY': api_key, 'Content-Type': 'application/json'}
     try:
         response = requests.post(url, headers=headers, data=payload)
         return response.json()
-    except Exception as e:
-        print(f"Search Error: {e}")
-        return None
+    except: return None
 
-# --- AI Agent Logic ---
 @app.route('/ask-agent', methods=['POST'])
+@login_required
 def ask_agent():
     try:
         data = request.get_json()
@@ -101,10 +146,10 @@ def ask_agent():
             if raw_results:
                 search_data = f"\n\nSearch Results: {json.dumps(raw_results)[:1500]}"
 
-        system_prompt = f"You are Nexus AI, a professional sales engine. Context: {product_context}. Knowledge: {kb_context}."
+        system_prompt = f"You are Nexus AI, a professional sales engine. User: {current_user.username}. Product: {product_context}. Knowledge: {kb_context}."
         
         messages = [{"role": "system", "content": system_prompt}]
-        for msg in session['chat_history'][-5:]: # Last 5 messages for memory
+        for msg in session['chat_history'][-5:]:
             messages.append(msg)
         messages.append({"role": "user", "content": user_query + search_data})
 
@@ -119,16 +164,14 @@ def ask_agent():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- Save Leads to CSV ---
 @app.route('/save-leads', methods=['POST'])
+@login_required
 def save_leads():
     try:
         data = request.get_json()
         leads_list = data.get('leads')
-        if not leads_list:
-            return jsonify({"error": "No leads to save"}), 400
-            
-        filename = "nexus_leads.csv"
+        if not leads_list: return jsonify({"error": "No leads"}), 400
+        filename = f"leads_{current_user.username}.csv"
         keys = leads_list[0].keys()
         with open(filename, 'w', newline='', encoding='utf-8') as output_file:
             dict_writer = csv.DictWriter(output_file, fieldnames=keys)
