@@ -153,7 +153,7 @@
                     📧 Send Email
                 </button>
                 <button onclick="stopVoice()" class="bg-red-500/10 hover:bg-red-500/30 border border-red-500 text-red-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
-                    🔇 Stop Voice
+                    🔇 Stop Audio
                 </button>
                 <button onclick="saveToCSV()" id="save-btn" 
                     class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full hidden font-bold transition-all">
@@ -172,7 +172,7 @@
         let lastLeads = []; 
         let leadsFoundCount = 0;
         let pitchesMadeCount = 0;
-        let synthesis = window.speechSynthesis;
+        let currentAudio = null;
 
         function toggleTheme() {
             document.body.classList.toggle('light-mode');
@@ -184,17 +184,44 @@
             }
         }
 
-        function speak(text) {
-            synthesis.cancel();
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.rate = 1.0;
-            msg.pitch = 1.0;
-            msg.lang = 'en-US';
-            synthesis.speak(msg);
+        async function playAIVoice(button, textToSpeak) {
+            const originalText = button.innerHTML;
+            button.innerText = "⌛ Generating...";
+            button.disabled = true;
+
+            try {
+                const response = await fetch('/get-voice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: textToSpeak })
+                });
+
+                if (!response.ok) throw new Error("Voice failed");
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                if (currentAudio) currentAudio.pause();
+                currentAudio = new Audio(url);
+                
+                button.innerText = "🔊 Playing...";
+                currentAudio.play();
+                
+                currentAudio.onended = () => {
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                };
+            } catch (e) {
+                alert("Voice Error: Check ElevenLabs API Key in Render");
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
         }
 
         function stopVoice() {
-            synthesis.cancel();
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
         }
 
         document.getElementById("userInput").addEventListener("keypress", function(event) {
@@ -243,8 +270,11 @@
             const messages = document.getElementById('messages');
             if(!input.value) return;
             const text = input.value;
+            
             messages.innerHTML += `<div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">${text}</div>`;
             input.value = '';
+            messages.scrollTop = messages.scrollHeight;
+
             if(text.toLowerCase().includes('find') || text.toLowerCase().includes('leads')) {
                 leadsFoundCount += 5;
                 document.getElementById('leadCount').innerText = leadsFoundCount;
@@ -253,19 +283,29 @@
                 pitchesMadeCount += 1;
                 document.getElementById('pitchCount').innerText = pitchesMadeCount;
             }
+
             const response = await fetch('/ask-agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text, product_context: product.value, kb_context: kb.value })
             });
             const data = await response.json();
+            
+            // Clean reply for voice
+            const cleanReply = data.reply.replace(/'/g, "\\'").replace(/\n/g, " ");
+
             messages.innerHTML += `
-                <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed border-l-2 border-sky-400">
+                <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm border-l-2 border-sky-400">
                     <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider font-bold">Nexus Intelligence</b>
-                    ${data.reply.replace(/\n/g, '<br>')}
+                    <div id="text-content">${data.reply.replace(/\n/g, '<br>')}</div>
+                    <button onclick="playAIVoice(this, '${cleanReply}')" 
+                        class="mt-3 text-[10px] bg-sky-500/20 hover:bg-sky-500/40 text-sky-400 px-3 py-1 rounded-lg border border-sky-500/30 transition-all font-bold flex items-center gap-2">
+                        <span>🔊</span> LISTEN TO AI
+                    </button>
                 </div>`;
+            
             messages.scrollTop = messages.scrollHeight;
-            speak(data.reply);
+
             if(text.toLowerCase().includes('find') || text.toLowerCase().includes('leads')) {
                 document.getElementById('save-btn').classList.remove('hidden');
                 lastLeads = [{ "Timestamp": new Date().toLocaleString(), "Query": text, "Status": "Verified" }];
@@ -275,8 +315,8 @@
         async function promptEmail() {
             const email = prompt("Enter recipient email:");
             if(!email) return;
-            const messages = document.querySelectorAll('.ai-msg-bubble');
-            const body = messages[messages.length - 1].innerText.replace('Nexus Intelligence', '');
+            const msgBubbles = document.querySelectorAll('#text-content');
+            const body = msgBubbles[msgBubbles.length - 1].innerText;
             
             const res = await fetch('/send-email', {
                 method: 'POST',
@@ -288,9 +328,9 @@
         }
 
         function sendWhatsApp() {
-            const messages = document.querySelectorAll('.ai-msg-bubble');
-            if (messages.length < 2) { alert("Please generate a pitch first!"); return; }
-            const lastMessage = messages[messages.length - 1].innerText.replace('Nexus Intelligence', '');
+            const msgBubbles = document.querySelectorAll('#text-content');
+            if (msgBubbles.length === 0) { alert("Please generate a pitch first!"); return; }
+            const lastMessage = msgBubbles[msgBubbles.length - 1].innerText;
             window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(lastMessage.trim())}`, '_blank');
         }
 
