@@ -18,7 +18,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # --- ElevenLabs Settings ---
 # Note: Render ke Environment Variables mein ELEVENLABS_API_KEY lazmi set karein.
 # Agar code mein direct dalni hai toh niche wali line use karein:
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "sk_660badb8c49037ae280233ad55df7d8adf6e333c6e6e0d82")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "sk_6de22baaec0b969bb12f78f7a40b5debca003787989082d1")
 VOICE_ID = "TxGEqn7nUAn3W6E29vgf" # Josh Voice ID
 
 # --- Login Logic ---
