@@ -27,7 +27,7 @@ login_manager.login_view = 'login'
 
 # --- Database Models ---
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)  # <-- 'int' ko 'db.Integer' kar diya
+    id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
@@ -35,12 +35,12 @@ class User(UserMixin, db.Model):
     lead_memories = db.relationship('LeadMemory', backref='agent', lazy=True)
 
 class LeadStats(db.Model):
-    id = db.Column(db.Integer, primary_key=True)  # <-- 'int' ko 'db.Integer' kar diya
+    id = db.Column(db.Integer, primary_key=True)
     total_saved = db.Column(db.Integer, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 class LeadMemory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)  # <-- 'int' ko 'db.Integer' kar diya
+    id = db.Column(db.Integer, primary_key=True)
     lead_identifier = db.Column(db.String(100), nullable=False) 
     company = db.Column(db.String(100))
     pain_points = db.Column(db.Text)
@@ -65,7 +65,6 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def home():
     return render_template('index.html', name=current_user.username)
 
-# NEW: LEAD VAULT ROUTE
 @app.route('/lead-vault')
 @login_required
 def lead_vault():
@@ -145,13 +144,13 @@ def ask_agent():
 
         if 'chat_history' not in session: session['chat_history'] = []
 
-        # 1. FETCH MEMORY (Isolated for current user)
+        # 1. FETCH MEMORY
         lead_memories = LeadMemory.query.filter_by(user_id=current_user.id).all()
         memory_str = ""
         if lead_memories:
-            memory_str = "\nYOUR PREVIOUS LEAD DATABASE (CONFIDENTIAL):\n"
+            memory_str = "\nYOUR PREVIOUS LEAD DATABASE:\n"
             for m in lead_memories:
-                memory_str += f"- Name: {m.lead_identifier}, Company: {m.company}, Pain: {m.pain_points}, Budget: {m.budget}, Summary: {m.summary}\n"
+                memory_str += f"- {m.lead_identifier} ({m.company}): {m.summary}\n"
 
         search_data = ""
         if any(word in user_query.lower() for word in ["find", "search", "leads"]):
@@ -159,16 +158,8 @@ def ask_agent():
             if raw_results: search_data = f"\n\nSearch: {json.dumps(raw_results)[:1500]}"
 
         system_prompt = f"""You are Nexus AI, personal assistant to {current_user.username}.
-        Your Boss is {current_user.username}.
-        
-        MEMORY LOGS:
-        {memory_str}
-        
-        RULES:
-        1. You are talking to your BOSS. You MUST answer all questions about previous leads using the MEMORY LOGS.
-        2. Never say 'I cannot share details' to {current_user.username}.
-        3. If the Boss asks about 'Rahul' or 'the last lead', look at the logs and answer.
-        4. Current Product: {product_context}."""
+        MEMORY LOGS: {memory_str}
+        RULES: 1. You answer all questions about previous leads. 2. Be professional. 3. Boss: {current_user.username}."""
         
         messages = [{"role": "system", "content": system_prompt}]
         for msg in session['chat_history'][-5:]: messages.append(msg)
@@ -177,8 +168,19 @@ def ask_agent():
         response = client.chat.completions.create(model="gpt-4o", messages=messages)
         reply = response.choices[0].message.content
         
-        # 2. AUTO-EXTRACTION (gpt-4o-mini)
-        extraction_prompt = f"Extract Name, Company, Pain, and Budget from: '{user_query}'. Return JSON ONLY. Format: {{\"name\": \"...\", \"company\": \"...\", \"pain\": \"...\", \"budget\": \"...\"}}. If info missing, use 'Unknown'."
+        # --- NEW: AUTOMATED CHAT LOGGING ---
+        # Ye part har chat ko automated save karega chahay user 'Hello' hi kyun na kahe
+        chat_log_id = f"Chat_{datetime.now().strftime('%H:%M:%S')}"
+        automated_log = LeadMemory(
+            lead_identifier=chat_log_id,
+            company="General Interaction",
+            summary=f"User: {user_query[:50]}... | AI: {reply[:100]}...",
+            user_id=current_user.id
+        )
+        db.session.add(automated_log)
+
+        # 2. DETAILED EXTRACTION (Only if specific info is found)
+        extraction_prompt = f"Extract info from: '{user_query}'. Return JSON ONLY: {{\"name\": \"...\", \"company\": \"...\", \"pain\": \"...\", \"budget\": \"...\"}}. Use 'Unknown' if missing."
         extract_res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": extraction_prompt}])
         ext_text = extract_res.choices[0].message.content
         
@@ -195,8 +197,9 @@ def ask_agent():
                     mem.pain_points = l_data.get('pain', mem.pain_points)
                     mem.budget = l_data.get('budget', mem.budget)
                     mem.summary = reply[:200]
-                    db.session.commit()
             except: pass
+
+        db.session.commit() # Save everything to database
 
         session['chat_history'].append({"role": "user", "content": user_query})
         session['chat_history'].append({"role": "assistant", "content": reply})
@@ -214,11 +217,6 @@ def save_leads():
         if stats:
             stats.total_saved += len(leads_list)
             db.session.commit()
-        filename = f"leads_{current_user.username}.csv"
-        with open(filename, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=leads_list[0].keys())
-            writer.writeheader()
-            writer.writerows(leads_list)
         return jsonify({"message": "Success!"})
     except Exception as e: return jsonify({"error": str(e)}), 500
 
