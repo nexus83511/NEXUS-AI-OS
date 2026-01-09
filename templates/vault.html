@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nexus AI | Lead Vault</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #020617; }
+        .glass { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body class="text-slate-200 p-6 md:p-12">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-12">
+            <div>
+                <h1 class="text-4xl font-black text-sky-400 tracking-tighter uppercase">Lead Vault</h1>
+                <p class="text-slate-500 text-sm font-bold uppercase tracking-widest">Long-Term Memory Storage</p>
+            </div>
+            <a href="/" class="glass px-6 py-2 rounded-xl text-xs font-bold hover:bg-sky-500 hover:text-slate-900 transition-all">RETURN TO DASHBOARD</a>
+        </div>
+
+        {% if not memories %}
+        <div class="text-center py-20 glass rounded-[40px]">
+            <p class="text-slate-500 font-bold uppercase tracking-widest">Vault is empty. Start talking to leads to build memory.</p>
+        </div>
+        {% else %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for m in memories %}
+            <div class="glass p-8 rounded-[32px] hover:border-sky-500/30 transition-all group">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="w-12 h-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-400 font-black text-xl">
+                        {{ m.lead_identifier[0]|upper }}
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-mono">{{ m.last_updated.strftime('%Y-%m-%d') }}</span>
+                </div>
+                
+                <h3 class="text-xl font-bold text-white mb-1">{{ m.lead_identifier }}</h3>
+                <p class="text-sky-400 text-xs font-bold uppercase tracking-tight mb-4">{{ m.company if m.company != 'Unknown' else 'No Company' }}</p>
+                
+                <div class="space-y-4">
+                    <div class="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
+                        <p class="text-[10px] text-slate-500 font-black uppercase mb-1">Pain Point</p>
+                        <p class="text-sm text-slate-300">{{ m.pain_points if m.pain_points != 'Unknown' else 'Analyzing...' }}</p>
+                    </div>
+                    
+                    <div class="flex gap-4">
+                        <div class="flex-1 bg-slate-950/50 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[10px] text-slate-500 font-black uppercase mb-1">Budget</p>
+                            <p class="text-sm font-bold text-green-400">{{ m.budget if m.budget != 'Unknown' else 'TBD' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-white/5">
+                        <p class="text-[10px] text-slate-500 font-black uppercase mb-2">Last Summary</p>
+                        <p class="text-xs text-slate-400 italic leading-relaxed">"{{ m.summary[:120] }}..."</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

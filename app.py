@@ -27,7 +27,7 @@ login_manager.login_view = 'login'
 
 # --- Database Models ---
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(int, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
@@ -35,12 +35,12 @@ class User(UserMixin, db.Model):
     lead_memories = db.relationship('LeadMemory', backref='agent', lazy=True)
 
 class LeadStats(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(int, primary_key=True)
     total_saved = db.Column(db.Integer, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 class LeadMemory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(int, primary_key=True)
     lead_identifier = db.Column(db.String(100), nullable=False) 
     company = db.Column(db.String(100))
     pain_points = db.Column(db.Text)
@@ -58,12 +58,19 @@ def load_user(user_id):
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# --- Authentication Routes ---
+# --- Routes ---
 
 @app.route('/')
 @login_required
 def home():
     return render_template('index.html', name=current_user.username)
+
+# NEW: LEAD VAULT ROUTE
+@app.route('/lead-vault')
+@login_required
+def lead_vault():
+    memories = LeadMemory.query.filter_by(user_id=current_user.id).order_by(LeadMemory.last_updated.desc()).all()
+    return render_template('vault.html', memories=memories)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -102,12 +109,9 @@ def logout():
 @app.route('/admin-panel')
 @login_required
 def admin_panel():
-    if not current_user.is_admin:
-        return "Access Denied", 403
+    if not current_user.is_admin: return "Access Denied", 403
     users_data = db.session.query(User, LeadStats).join(LeadStats, User.id == LeadStats.user_id).all()
     return render_template('admin.html', users_data=users_data)
-
-# --- AI & Business Logic Routes ---
 
 @app.route('/upload-pdf', methods=['POST'])
 @login_required
@@ -154,7 +158,6 @@ def ask_agent():
             raw_results = search_leads(user_query)
             if raw_results: search_data = f"\n\nSearch: {json.dumps(raw_results)[:1500]}"
 
-        # UPDATED PROMPT: Giving full access to the boss
         system_prompt = f"""You are Nexus AI, personal assistant to {current_user.username}.
         Your Boss is {current_user.username}.
         
@@ -162,10 +165,10 @@ def ask_agent():
         {memory_str}
         
         RULES:
-        1. You are talking to your BOSS. You MUST answer all questions about previous leads using the MEMORY LOGS above.
-        2. Never say 'I cannot share details' to {current_user.username}. This data belongs to him.
-        3. If the Boss asks about 'Rahul' or 'the last lead', look at the logs and give a detailed answer.
-        4. Current Product: {product_context}. Knowledge: {kb_context}."""
+        1. You are talking to your BOSS. You MUST answer all questions about previous leads using the MEMORY LOGS.
+        2. Never say 'I cannot share details' to {current_user.username}.
+        3. If the Boss asks about 'Rahul' or 'the last lead', look at the logs and answer.
+        4. Current Product: {product_context}."""
         
         messages = [{"role": "system", "content": system_prompt}]
         for msg in session['chat_history'][-5:]: messages.append(msg)
@@ -174,23 +177,23 @@ def ask_agent():
         response = client.chat.completions.create(model="gpt-4o", messages=messages)
         reply = response.choices[0].message.content
         
-        # 2. AUTO-EXTRACTION (gpt-4o-mini for speed/cost)
-        extraction_prompt = f"Extract Name, Company, Pain, and Budget from: '{user_query}'. Return JSON ONLY. If nothing found, return NONE."
+        # 2. AUTO-EXTRACTION (gpt-4o-mini)
+        extraction_prompt = f"Extract Name, Company, Pain, and Budget from: '{user_query}'. Return JSON ONLY. Format: {{\"name\": \"...\", \"company\": \"...\", \"pain\": \"...\", \"budget\": \"...\"}}. If info missing, use 'Unknown'."
         extract_res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": extraction_prompt}])
         ext_text = extract_res.choices[0].message.content
         
         if "{" in ext_text:
             try:
                 l_data = json.loads(ext_text)
-                l_name = l_data.get('Name') or l_data.get('name')
+                l_name = l_data.get('name')
                 if l_name and l_name != "Unknown":
                     mem = LeadMemory.query.filter_by(lead_identifier=l_name, user_id=current_user.id).first()
                     if not mem:
                         mem = LeadMemory(lead_identifier=l_name, user_id=current_user.id)
                         db.session.add(mem)
-                    mem.company = l_data.get('Company', l_data.get('company', mem.company))
-                    mem.pain_points = l_data.get('Pain', l_data.get('pain', mem.pain_points))
-                    mem.budget = l_data.get('Budget', l_data.get('budget', mem.budget))
+                    mem.company = l_data.get('company', mem.company)
+                    mem.pain_points = l_data.get('pain', mem.pain_points)
+                    mem.budget = l_data.get('budget', mem.budget)
                     mem.summary = reply[:200]
                     db.session.commit()
             except: pass
