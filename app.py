@@ -27,7 +27,7 @@ login_manager.login_view = 'login'
 
 # --- Database Models ---
 class User(UserMixin, db.Model):
-    id = db.Column(int, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)  # <-- 'int' ko 'db.Integer' kar diya
     username = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
@@ -35,12 +35,12 @@ class User(UserMixin, db.Model):
     lead_memories = db.relationship('LeadMemory', backref='agent', lazy=True)
 
 class LeadStats(db.Model):
-    id = db.Column(int, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)  # <-- 'int' ko 'db.Integer' kar diya
     total_saved = db.Column(db.Integer, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 class LeadMemory(db.Model):
-    id = db.Column(int, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)  # <-- 'int' ko 'db.Integer' kar diya
     lead_identifier = db.Column(db.String(100), nullable=False) 
     company = db.Column(db.String(100))
     pain_points = db.Column(db.Text)
