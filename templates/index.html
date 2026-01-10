@@ -12,7 +12,6 @@
             --bg-main: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
             --card-bg: rgba(30, 41, 59, 0.6);
             --text-main: white;
-            --sidebar-bg: #111827;
         }
 
         .light-mode {
@@ -27,25 +26,7 @@
             color: var(--text-main);
             min-height: 100vh;
             transition: all 0.4s ease;
-            display: flex; /* Sidebar ke liye flex add kiya */
         }
-        
-        /* SIDEBAR STYLING */
-        .sidebar {
-            width: 260px;
-            background: var(--sidebar-bg);
-            border-right: 1px solid rgba(255,255,255,0.05);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s;
-        }
-        .active-session {
-            background: rgba(56, 189, 248, 0.1);
-            border-left: 4px solid #38bdf8;
-            color: white !important;
-        }
-
         .glass-card {
             background: var(--card-bg);
             backdrop-filter: blur(12px);
@@ -69,162 +50,132 @@
         }
     </style>
 </head>
-<body class="overflow-hidden"> <aside class="sidebar hidden md:flex">
-        <div class="p-4">
-            <a href="/new-chat" class="w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 p-3 rounded-xl font-bold transition-all text-xs text-white">
-                + NEW CONVERSATION
-            </a>
+<body class="flex flex-col items-center p-4 md:p-8">
+
+    <div class="fixed top-5 right-5 z-50 flex gap-3 items-center">
+        <a href="/lead-vault" class="bg-sky-500/10 text-sky-400 px-4 py-2 rounded-lg font-bold text-xs border border-sky-500/20 hover:bg-sky-500 hover:text-white transition-all">
+            📂 VIEW LEAD VAULT
+        </a>
+
+        <a href="/logout" class="p-3 rounded-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+        </a>
+        <button onclick="toggleTheme()" class="p-3 rounded-full bg-slate-800 border border-slate-700 text-sky-400 hover:scale-110 transition-all shadow-2xl">
+            <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        </button>
+    </div>
+
+    <header class="mb-10 text-center animate-fade-in">
+        <h1 class="text-6xl font-extrabold tracking-tighter mb-2">
+            NEXUS <span class="text-sky-400">AI-OS</span>
+        </h1>
+        <div class="flex items-center justify-center gap-2">
+            <span class="relative flex h-3 w-3">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <p class="text-slate-400 font-mono text-sm uppercase tracking-widest">Autonomous Sales Engine Active</p>
         </div>
-        <div class="flex-grow overflow-y-auto px-2" id="sessions-list">
-            <p class="text-[10px] text-slate-500 font-bold uppercase p-3 tracking-widest">Chat History</p>
-            {% for s in sessions %}
-            <a href="/?chat_id={{ s.id }}" class="block p-3 rounded-lg text-sm truncate text-slate-400 hover:bg-slate-800 transition-all mb-1 {% if active_session|string == s.id|string %}active-session{% endif %}">
-                💬 {{ s.title }}
-            </a>
-            {% endfor %}
+    </header>
+
+    <div class="grid grid-cols-3 gap-4 w-full max-w-4xl mb-6">
+        <div class="glass-card p-4 rounded-2xl text-center border-t-2 border-sky-500 shadow-sky-500/10">
+            <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Total Leads</p>
+            <h3 id="leadCount" class="text-2xl font-black">0</h3>
         </div>
-        <div class="p-4 border-t border-slate-800">
-            <p class="text-[10px] text-slate-500 mb-2">LOGGED IN AS: {{ name }}</p>
+        <div class="glass-card p-4 rounded-2xl text-center border-t-2 border-emerald-500 shadow-emerald-500/10">
+            <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Pitches Made</p>
+            <h3 id="pitchCount" class="text-2xl font-black">0</h3>
         </div>
-    </aside>
-    <main class="flex-grow flex flex-col items-center p-4 md:p-8 overflow-y-auto h-screen w-full">
-
-        <div class="fixed top-5 right-5 z-50 flex gap-3 items-center">
-            <a href="/lead-vault" class="bg-sky-500/10 text-sky-400 px-4 py-2 rounded-lg font-bold text-xs border border-sky-500/20 hover:bg-sky-500 hover:text-white transition-all">
-                📂 VIEW LEAD VAULT
-            </a>
-
-            <a href="/logout" class="p-3 rounded-full bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-xl">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-            </a>
-            <button onclick="toggleTheme()" class="p-3 rounded-full bg-slate-800 border border-slate-700 text-sky-400 hover:scale-110 transition-all shadow-2xl">
-                <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-            </button>
+        <div class="glass-card p-4 rounded-2xl text-center border-t-2 border-purple-500 shadow-purple-500/10">
+            <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Success Rate</p>
+            <h3 class="text-2xl font-black">98%</h3>
         </div>
+    </div>
 
-        <header class="mb-10 text-center animate-fade-in">
-            <h1 class="text-6xl font-extrabold tracking-tighter mb-2">
-                NEXUS <span class="text-sky-400">AI-OS</span>
-            </h1>
-            <div class="flex items-center justify-center gap-2">
-                <span class="relative flex h-3 w-3">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-                <p class="text-slate-400 font-mono text-sm uppercase tracking-widest">Autonomous Sales Engine Active</p>
-            </div>
-        </header>
-
-        <div class="grid grid-cols-3 gap-4 w-full max-w-4xl mb-6">
-            <div class="glass-card p-4 rounded-2xl text-center border-t-2 border-sky-500 shadow-sky-500/10">
-                <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Total Leads</p>
-                <h3 id="leadCount" class="text-2xl font-black">0</h3>
-            </div>
-            <div class="glass-card p-4 rounded-2xl text-center border-t-2 border-emerald-500 shadow-emerald-500/10">
-                <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Pitches Made</p>
-                <h3 id="pitchCount" class="text-2xl font-black">0</h3>
-            </div>
-            <div class="glass-card p-4 rounded-2xl text-center border-t-2 border-purple-500 shadow-purple-500/10">
-                <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Success Rate</p>
-                <h3 class="text-2xl font-black">98%</h3>
-            </div>
-        </div>
-
-        <div id="chat-container" class="glass-card w-full max-w-4xl rounded-3xl p-6 flex flex-col overflow-hidden">
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div class="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50">
-                    <label class="block text-sky-400 text-xs font-bold uppercase tracking-widest mb-2">🚀 AI Sales Brain (Product Training)</label>
-                    <textarea id="productDetails" 
-                        class="w-full training-input rounded-xl p-3 text-sm placeholder-slate-600 focus:outline-none h-24 resize-none"
-                        placeholder="What are you selling? (e.g. AI Bots for Real Estate)"></textarea>
-                </div>
-
-                <div class="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50 flex flex-col">
-                    <label class="block text-emerald-400 text-xs font-bold uppercase tracking-widest mb-2">📚 Company Knowledge Base</label>
-                    <textarea id="knowledgeBase" 
-                        class="w-full training-input rounded-xl p-3 text-sm placeholder-slate-600 focus:outline-none h-24 resize-none mb-3"
-                        placeholder="Paste Price Lists, FAQs, or Service Details here..."></textarea>
-                    
-                    <div class="p-2 rounded-xl bg-slate-800/50 border border-dashed border-slate-600 flex items-center justify-between gap-2">
-                        <input type="file" id="pdfFile" accept=".pdf" class="text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-sky-500/20 file:text-sky-400 cursor-pointer w-full">
-                        <button onclick="uploadPDF()" id="uploadBtn" class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] px-3 py-1.5 rounded-lg transition-all font-bold whitespace-nowrap">EXTRACT PDF</button>
-                    </div>
-                </div>
+    <div id="chat-container" class="glass-card w-full max-w-4xl rounded-3xl p-6 flex flex-col overflow-hidden">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50">
+                <label class="block text-sky-400 text-xs font-bold uppercase tracking-widest mb-2">🚀 AI Sales Brain (Product Training)</label>
+                <textarea id="productDetails" 
+                    class="w-full training-input rounded-xl p-3 text-sm placeholder-slate-600 focus:outline-none h-24 resize-none"
+                    placeholder="What are you selling? (e.g. AI Bots for Real Estate)"></textarea>
             </div>
 
-            <div id="messages" class="h-[350px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
-                {% if not chat_history %}
-                <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed border-l-4 border-sky-500">
-                    <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider font-bold">System Authorization Granted</b>
-                    <span class="text-lg font-bold block mb-2 text-white">READY TO DOMINATE THE MARKET? ⚡</span>
-                    Commander, your Autonomous Sales Engine is online. Train my brain with a PDF or text, and I'll start the hunt.
-                </div>
-                {% endif %}
-
-                {% for chat in chat_history %}
-                <div class="{% if chat.role == 'user' %}user-msg-bubble self-end ml-auto{% else %}ai-msg-bubble self-start border-l-2 border-sky-400{% endif %} p-5 rounded-2xl max-w-[85%] text-white shadow-md">
-                    {% if chat.role != 'user' %}<b class="text-sky-400 block mb-1 uppercase text-xs font-bold">Nexus Intelligence</b>{% endif %}
-                    <div class="text-content">{{ chat.content|safe }}</div>
-                </div>
-                {% endfor %}
-            </div>
-            
-            <div class="space-y-4">
-                <div class="flex gap-3">
-                    <input type="text" id="userInput" 
-                        class="flex-grow bg-slate-900/80 border border-slate-700 p-4 rounded-2xl focus:outline-none focus:border-sky-500 transition-all text-white placeholder-slate-500" 
-                        placeholder="Enter industry or target location...">
-                    <button onclick="sendMessage()" 
-                        class="bg-sky-500 hover:bg-sky-400 text-slate-900 font-bold px-10 rounded-2xl transition-all transform active:scale-95 shadow-lg shadow-sky-500/20 uppercase tracking-tight">
-                        Analyze
-                    </button>
-                </div>
+            <div class="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50 flex flex-col">
+                <label class="block text-emerald-400 text-xs font-bold uppercase tracking-widest mb-2">📚 Company Knowledge Base</label>
+                <textarea id="knowledgeBase" 
+                    class="w-full training-input rounded-xl p-3 text-sm placeholder-slate-600 focus:outline-none h-24 resize-none mb-3"
+                    placeholder="Paste Price Lists, FAQs, or Service Details here..."></textarea>
                 
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="quickAction('Find 5 software agencies in Dubai')" 
-                        class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300 font-semibold transition-all">
-                        🔍 Find Leads
-                    </button>
-                    <button onclick="quickAction('Draft a professional pitch using my product info')" 
-                        class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300 font-semibold transition-all">
-                        📱 Sales Pitch
-                    </button>
-                    <button onclick="sendWhatsApp()" 
-                        class="bg-green-600/20 hover:bg-green-600/40 border border-green-500 text-green-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
-                        🚀 WhatsApp
-                    </button>
-                    <button onclick="promptEmail()" 
-                        class="bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500 text-blue-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
-                        📧 Send Email
-                    </button>
-                    <button onclick="stopVoice()" class="bg-red-500/10 hover:bg-red-500/30 border border-red-500 text-red-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
-                        🔇 Stop Audio
-                    </button>
-                    <button onclick="saveToCSV()" id="save-btn" 
-                        class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full hidden font-bold transition-all">
-                        💾 Export CSV
-                    </button>
+                <div class="p-2 rounded-xl bg-slate-800/50 border border-dashed border-slate-600 flex items-center justify-between gap-2">
+                    <input type="file" id="pdfFile" accept=".pdf" class="text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-sky-500/20 file:text-sky-400 cursor-pointer w-full">
+                    <button onclick="uploadPDF()" id="uploadBtn" class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] px-3 py-1.5 rounded-lg transition-all font-bold whitespace-nowrap">EXTRACT PDF</button>
                 </div>
             </div>
         </div>
 
-        <footer class="mt-8 text-slate-500 text-xs tracking-widest uppercase text-center">
-            Nexus AI-OS &copy; 2026 | Built for Hyper-Growth<br>
-            <span class="opacity-50 text-[10px]">Secure Session Active</span>
-        </footer>
-    </main>
+        <div id="messages" class="h-[350px] overflow-y-auto mb-6 pr-2 flex flex-col gap-5">
+            <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm leading-relaxed border-l-4 border-sky-500">
+                <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider font-bold">System Authorization Granted</b>
+                <span class="text-lg font-bold block mb-2 text-white">READY TO DOMINATE THE MARKET? ⚡</span>
+                Commander, your Autonomous Sales Engine is online. Train my brain with a PDF or text, and I'll start the hunt.
+            </div>
+        </div>
+        
+        <div class="space-y-4">
+            <div class="flex gap-3">
+                <input type="text" id="userInput" 
+                    class="flex-grow bg-slate-900/80 border border-slate-700 p-4 rounded-2xl focus:outline-none focus:border-sky-500 transition-all text-white placeholder-slate-500" 
+                    placeholder="Enter industry or target location...">
+                <button onclick="sendMessage()" 
+                    class="bg-sky-500 hover:bg-sky-400 text-slate-900 font-bold px-10 rounded-2xl transition-all transform active:scale-95 shadow-lg shadow-sky-500/20 uppercase tracking-tight">
+                    Analyze
+                </button>
+            </div>
+            
+            <div class="flex flex-wrap gap-2">
+                <button onclick="quickAction('Find 5 software agencies in Dubai')" 
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300 font-semibold transition-all">
+                    🔍 Find Leads
+                </button>
+                <button onclick="quickAction('Draft a professional pitch using my product info')" 
+                    class="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 text-xs py-2.5 px-5 rounded-full text-slate-300 font-semibold transition-all">
+                    📱 Sales Pitch
+                </button>
+                <button onclick="sendWhatsApp()" 
+                    class="bg-green-600/20 hover:bg-green-600/40 border border-green-500 text-green-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
+                    🚀 WhatsApp
+                </button>
+                <button onclick="promptEmail()" 
+                    class="bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500 text-blue-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
+                    📧 Send Email
+                </button>
+                <button onclick="stopVoice()" class="bg-red-500/10 hover:bg-red-500/30 border border-red-500 text-red-400 text-xs py-2.5 px-5 rounded-full font-bold transition-all">
+                    🔇 Stop Audio
+                </button>
+                <button onclick="saveToCSV()" id="save-btn" 
+                    class="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs py-2.5 px-5 rounded-full hidden font-bold transition-all">
+                    💾 Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-8 text-slate-500 text-xs tracking-widest uppercase text-center">
+        Nexus AI-OS &copy; 2026 | Built for Hyper-Growth<br>
+        <span class="opacity-50 text-[10px]">Secure Session Active</span>
+    </footer>
 
     <script>
-        // --- Aapka Purana Sara Script Logic Waisa Hi Hai ---
         let lastLeads = []; 
         let leadsFoundCount = 0;
         let pitchesMadeCount = 0;
-        const currentSessionId = "{{ active_session }}";
 
         function toggleTheme() {
             document.body.classList.toggle('light-mode');
@@ -236,34 +187,77 @@
             }
         }
 
+        // --- NEW BROWSER-BASED FREE VOICE (FEMALE) ---
         function playAIVoice(button, textToSpeak) {
+            const originalText = button.innerHTML;
+            button.innerText = "⌛ Speaking...";
+            button.disabled = true;
+
+            // Stop any current speech
             window.speechSynthesis.cancel();
+
             const utterance = new SpeechSynthesisUtterance(textToSpeak);
             const voices = window.speechSynthesis.getVoices();
-            const femaleVoice = voices.find(v => (v.name.includes('Female') || v.name.includes('Google US English') || v.name.includes('Zira')));
+            
+            // Try to find a good female voice
+            const femaleVoice = voices.find(v => 
+                (v.name.includes('Female') || v.name.includes('Google US English') || v.name.includes('Zira') || v.name.includes('Samantha'))
+            );
+
             if (femaleVoice) utterance.voice = femaleVoice;
-            utterance.pitch = 1.1;
+            
+            utterance.pitch = 1.1; // Slightly higher for female tone
+            utterance.rate = 1.0;
+
+            utterance.onend = () => {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            };
+
+            utterance.onerror = () => {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            };
+
             window.speechSynthesis.speak(utterance);
         }
 
-        function stopVoice() { window.speechSynthesis.cancel(); }
+        function stopVoice() {
+            window.speechSynthesis.cancel();
+        }
 
         document.getElementById("userInput").addEventListener("keypress", function(event) {
-            if (event.key === "Enter") { sendMessage(); }
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendMessage();
+            }
         });
 
         async function uploadPDF() {
             const fileInput = document.getElementById('pdfFile');
             const kbBox = document.getElementById('knowledgeBase');
             const btn = document.getElementById('uploadBtn');
-            if (fileInput.files.length === 0) return alert("Select PDF");
+            if (fileInput.files.length === 0) {
+                alert("Please select a PDF file first.");
+                return;
+            }
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             btn.innerText = "READING...";
-            const res = await fetch('/upload-pdf', { method: 'POST', body: formData });
-            const data = await res.json();
-            kbBox.value = data.text;
-            btn.innerText = "DONE ✅";
+            btn.disabled = true;
+            try {
+                const response = await fetch('/upload-pdf', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.text) {
+                    kbBox.value = data.text;
+                    btn.innerText = "DONE ✅";
+                    btn.classList.replace('bg-sky-600', 'bg-emerald-600');
+                }
+            } catch (e) {
+                btn.innerText = "ERROR";
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         function quickAction(cmd) {
@@ -279,56 +273,80 @@
             if(!input.value) return;
             const text = input.value;
             
-            messages.innerHTML += `<div class="user-msg-bubble self-end p-5 rounded-2xl max-w-[85%] text-white shadow-md font-medium ml-auto">${text}</div>`;
+            messages.innerHTML += `<div class="user-msg-bubble self-end p-5 rounded-2xl rounded-tr-none max-w-[85%] text-white shadow-md font-medium">${text}</div>`;
             input.value = '';
             messages.scrollTop = messages.scrollHeight;
+
+            if(text.toLowerCase().includes('find') || text.toLowerCase().includes('leads')) {
+                leadsFoundCount += 5;
+                document.getElementById('leadCount').innerText = leadsFoundCount;
+            }
+            if(text.toLowerCase().includes('pitch') || text.toLowerCase().includes('draft')) {
+                pitchesMadeCount += 1;
+                document.getElementById('pitchCount').innerText = pitchesMadeCount;
+            }
 
             const response = await fetch('/ask-agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: text, 
-                    product_context: product.value, 
-                    kb_context: kb.value,
-                    session_id: currentSessionId 
-                })
+                body: JSON.stringify({ message: text, product_context: product.value, kb_context: kb.value })
             });
             const data = await response.json();
             
-            // Redirect for new session
-            if (!currentSessionId || currentSessionId === "None") {
-                window.location.href = "/?chat_id=" + data.session_id;
-                return;
-            }
+            // Clean reply for voice
+            const cleanReply = data.reply.replace(/'/g, "\\'").replace(/\n/g, " ");
 
             messages.innerHTML += `
-                <div class="ai-msg-bubble self-start p-5 rounded-2xl max-w-[85%] text-slate-100 shadow-sm border-l-2 border-sky-400">
-                    <b class="text-sky-400 block mb-1 uppercase text-xs font-bold">Nexus Intelligence</b>
+                <div class="ai-msg-bubble self-start p-5 rounded-2xl rounded-tl-none max-w-[85%] text-slate-100 shadow-sm border-l-2 border-sky-400">
+                    <b class="text-sky-400 block mb-1 uppercase text-xs tracking-wider font-bold">Nexus Intelligence</b>
                     <div class="text-content">${data.reply.replace(/\n/g, '<br>')}</div>
+                    <button onclick="playAIVoice(this, '${cleanReply}')" 
+                        class="mt-3 text-[10px] bg-sky-500/20 hover:bg-sky-500/40 text-sky-400 px-3 py-1 rounded-lg border border-sky-500/30 transition-all font-bold flex items-center gap-2">
+                        <span>🔊</span> LISTEN TO AI
+                    </button>
                 </div>`;
             
             messages.scrollTop = messages.scrollHeight;
-            playAIVoice(null, data.reply);
+
+            if(text.toLowerCase().includes('find') || text.toLowerCase().includes('leads')) {
+                document.getElementById('save-btn').classList.remove('hidden');
+                lastLeads = [{ "Timestamp": new Date().toLocaleString(), "Query": text, "Status": "Verified" }];
+            }
         }
 
         async function promptEmail() {
-            const email = prompt("Enter email:");
+            const email = prompt("Enter recipient email:");
             if(!email) return;
             const msgBubbles = document.querySelectorAll('.text-content');
             const body = msgBubbles[msgBubbles.length - 1].innerText;
-            await fetch('/send-email', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email, body }) });
-            alert("Email Sent!");
+            
+            const res = await fetch('/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, body })
+            });
+            const data = await res.json();
+            alert(data.message || data.error);
         }
 
         function sendWhatsApp() {
             const msgBubbles = document.querySelectorAll('.text-content');
+            if (msgBubbles.length === 0) { alert("Please generate a pitch first!"); return; }
             const lastMessage = msgBubbles[msgBubbles.length - 1].innerText;
             window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(lastMessage.trim())}`, '_blank');
         }
 
         async function saveToCSV() {
+            await fetch('/save-leads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leads: lastLeads })
+            });
             alert("Database Exported!");
         }
+
+        // Initialize voices
+        window.speechSynthesis.getVoices();
     </script>
 </body>
 </html>
