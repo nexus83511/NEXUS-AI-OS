@@ -33,6 +33,16 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     leads_count = db.relationship('LeadStats', backref='owner', lazy=True)
     lead_memories = db.relationship('LeadMemory', backref='agent', lazy=True)
+    # Naya: Chat hamesha yaad rakhne ke liye rishta
+    chats = db.relationship('ChatMessage', backref='user', lazy=True, cascade="all, delete-orphan")
+
+# Naya Model: Chat database mein save karne ke liye
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    role = db.Column(db.String(20), nullable=False) # 'user' ya 'assistant'
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 class LeadStats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -63,7 +73,20 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 @app.route('/')
 @login_required
 def home():
-    return render_template('index.html', name=current_user.username)
+    # DB se is user ki purani chat history nikaal kar page par bhejna
+    history = ChatMessage.query.filter_by(user_id=current_user.id).order_by(ChatMessage.timestamp.asc()).all()
+    return render_template('index.html', name=current_user.username, chat_history=history)
+
+# Naya Route: Chat history delete karne ke liye
+@app.route('/delete-chat', methods=['POST'])
+@login_required
+def delete_chat():
+    try:
+        ChatMessage.query.filter_by(user_id=current_user.id).delete()
+        db.session.commit()
+        return jsonify({"success": True, "message": "History Cleared!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/lead-vault')
 @login_required
@@ -139,71 +162,39 @@ def ask_agent():
     try:
         data = request.get_json()
         user_query = data.get('message')
-        product_context = data.get('product_context', 'Nexus AI-OS')
-        kb_context = data.get('kb_context', '')
 
-        if 'chat_history' not in session: session['chat_history'] = []
-
-        # 1. FETCH MEMORY
-        lead_memories = LeadMemory.query.filter_by(user_id=current_user.id).all()
-        memory_str = ""
-        if lead_memories:
-            memory_str = "\nYOUR PREVIOUS LEAD DATABASE:\n"
-            for m in lead_memories:
-                memory_str += f"- {m.lead_identifier} ({m.company}): {m.summary}\n"
-
-        search_data = ""
-        if any(word in user_query.lower() for word in ["find", "search", "leads"]):
-            raw_results = search_leads(user_query)
-            if raw_results: search_data = f"\n\nSearch: {json.dumps(raw_results)[:1500]}"
-
-        system_prompt = f"""You are Nexus AI, personal assistant to {current_user.username}.
-        MEMORY LOGS: {memory_str}
-        RULES: 1. You answer all questions about previous leads. 2. Be professional. 3. Boss: {current_user.username}."""
+        # 1. FETCH PERMANENT HISTORY: DB se saari purani chat nikaalna
+        past_chats = ChatMessage.query.filter_by(user_id=current_user.id).order_by(ChatMessage.timestamp.asc()).all()
         
-        messages = [{"role": "system", "content": system_prompt}]
-        for msg in session['chat_history'][-5:]: messages.append(msg)
-        messages.append({"role": "user", "content": user_query + search_data})
+        messages = [{"role": "system", "content": f"You are Nexus AI. Your boss is {current_user.username}. Use history to stay in context."}]
+        for chat in past_chats:
+            messages.append({"role": chat.role, "content": chat.content})
+        
+        messages.append({"role": "user", "content": user_query})
 
+        # OpenAI Response
         response = client.chat.completions.create(model="gpt-4o", messages=messages)
         reply = response.choices[0].message.content
         
-        # --- NEW: AUTOMATED CHAT LOGGING ---
-        # Ye part har chat ko automated save karega chahay user 'Hello' hi kyun na kahe
-        chat_log_id = f"Chat_{datetime.now().strftime('%H:%M:%S')}"
-        automated_log = LeadMemory(
-            lead_identifier=chat_log_id,
-            company="General Interaction",
-            summary=f"User: {user_query[:50]}... | AI: {reply[:100]}...",
-            user_id=current_user.id
-        )
-        db.session.add(automated_log)
+        # 2. SAVE TO DATABASE: Dono baatein hamesha ke liye save
+        db.session.add(ChatMessage(user_id=current_user.id, role="user", content=user_query))
+        db.session.add(ChatMessage(user_id=current_user.id, role="assistant", content=reply))
 
-        # 2. DETAILED EXTRACTION (Only if specific info is found)
-        extraction_prompt = f"Extract info from: '{user_query}'. Return JSON ONLY: {{\"name\": \"...\", \"company\": \"...\", \"pain\": \"...\", \"budget\": \"...\"}}. Use 'Unknown' if missing."
+        # 3. EXTRACTION LOGIC (Waisa hi hai jaisa aapka pehle tha)
+        extraction_prompt = f"Extract info from: '{user_query}'. Return JSON ONLY: {{\"name\": \"...\", \"company\": \"...\", \"pain\": \"...\", \"budget\": \"...\"}}."
         extract_res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": extraction_prompt}])
-        ext_text = extract_res.choices[0].message.content
-        
-        if "{" in ext_text:
-            try:
-                l_data = json.loads(ext_text)
-                l_name = l_data.get('name')
-                if l_name and l_name != "Unknown":
-                    mem = LeadMemory.query.filter_by(lead_identifier=l_name, user_id=current_user.id).first()
-                    if not mem:
-                        mem = LeadMemory(lead_identifier=l_name, user_id=current_user.id)
-                        db.session.add(mem)
-                    mem.company = l_data.get('company', mem.company)
-                    mem.pain_points = l_data.get('pain', mem.pain_points)
-                    mem.budget = l_data.get('budget', mem.budget)
-                    mem.summary = reply[:200]
-            except: pass
+        try:
+            l_data = json.loads(extract_res.choices[0].message.content)
+            if l_data.get('name') and l_data.get('name') != "Unknown":
+                mem = LeadMemory.query.filter_by(lead_identifier=l_data['name'], user_id=current_user.id).first()
+                if not mem:
+                    mem = LeadMemory(lead_identifier=l_data['name'], user_id=current_user.id)
+                    db.session.add(mem)
+                mem.company, mem.pain_points, mem.budget = l_data.get('company'), l_data.get('pain'), l_data.get('budget')
+                mem.summary = reply[:200]
+        except: pass
 
-        db.session.commit() # Save everything to database
-
-        session['chat_history'].append({"role": "user", "content": user_query})
-        session['chat_history'].append({"role": "assistant", "content": reply})
-        session.modified = True 
+        db.session.commit()
         return jsonify({"reply": reply})
     except Exception as e: return jsonify({"error": str(e)}), 500
 
