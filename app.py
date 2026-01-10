@@ -33,14 +33,12 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     leads_count = db.relationship('LeadStats', backref='owner', lazy=True)
     lead_memories = db.relationship('LeadMemory', backref='agent', lazy=True)
-    # Naya: Chat hamesha yaad rakhne ke liye rishta
     chats = db.relationship('ChatMessage', backref='user', lazy=True, cascade="all, delete-orphan")
 
-# Naya Model: Chat database mein save karne ke liye
 class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    role = db.Column(db.String(20), nullable=False) # 'user' ya 'assistant'
+    role = db.Column(db.String(20), nullable=False) 
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -73,11 +71,19 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 @app.route('/')
 @login_required
 def home():
-    # DB se is user ki purani chat history nikaal kar page par bhejna
+    # FIXED: session_id query se lena aur HTML ko bhejna
+    chat_id = request.args.get('chat_id', 'default')
+    
+    # DB se history nikaalna
     history = ChatMessage.query.filter_by(user_id=current_user.id).order_by(ChatMessage.timestamp.asc()).all()
-    return render_template('index.html', name=current_user.username, chat_history=history)
+    
+    # FIXED: Sidebar ke liye sessions ki empty list bhej rahe hain taake error na aaye
+    return render_template('index.html', 
+                           name=current_user.username, 
+                           chat_history=history, 
+                           active_session=chat_id,
+                           sessions=[]) # Aapke HTML mein {% for s in sessions %} hai isliye ye zaroori hai
 
-# Naya Route: Chat history delete karne ke liye
 @app.route('/delete-chat', methods=['POST'])
 @login_required
 def delete_chat():
@@ -146,41 +152,33 @@ def upload_pdf():
         return jsonify({"text": extracted_text[:7000]})
     except Exception as e: return jsonify({"error": str(e)}), 500
 
-def search_leads(query):
-    api_key = os.getenv("SERPER_API_KEY")
-    if not api_key: return None
-    url = "https://google.serper.dev/search"
-    headers = {'X-API-KEY': api_key, 'Content-Type': 'application/json'}
-    try:
-        response = requests.post(url, headers=headers, data=json.dumps({"q": query}))
-        return response.json()
-    except: return None
-
 @app.route('/ask-agent', methods=['POST'])
 @login_required
 def ask_agent():
     try:
         data = request.get_json()
         user_query = data.get('message')
+        prod_context = data.get('product_context', '')
+        kb_context = data.get('kb_context', '')
 
-        # 1. FETCH PERMANENT HISTORY: DB se saari purani chat nikaalna
         past_chats = ChatMessage.query.filter_by(user_id=current_user.id).order_by(ChatMessage.timestamp.asc()).all()
         
-        messages = [{"role": "system", "content": f"You are Nexus AI. Your boss is {current_user.username}. Use history to stay in context."}]
+        # FIXED: AI ko system message mein training context dena
+        system_content = f"You are Nexus AI. Boss: {current_user.username}. Product: {prod_context}. Knowledge: {kb_context}."
+        messages = [{"role": "system", "content": system_content}]
+        
         for chat in past_chats:
             messages.append({"role": chat.role, "content": chat.content})
         
         messages.append({"role": "user", "content": user_query})
 
-        # OpenAI Response
         response = client.chat.completions.create(model="gpt-4o", messages=messages)
         reply = response.choices[0].message.content
         
-        # 2. SAVE TO DATABASE: Dono baatein hamesha ke liye save
         db.session.add(ChatMessage(user_id=current_user.id, role="user", content=user_query))
         db.session.add(ChatMessage(user_id=current_user.id, role="assistant", content=reply))
 
-        # 3. EXTRACTION LOGIC (Waisa hi hai jaisa aapka pehle tha)
+        # Extraction Logic (Waisa hi rakha hai jaisa aapne diya tha)
         extraction_prompt = f"Extract info from: '{user_query}'. Return JSON ONLY: {{\"name\": \"...\", \"company\": \"...\", \"pain\": \"...\", \"budget\": \"...\"}}."
         extract_res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": extraction_prompt}])
         try:
@@ -195,7 +193,8 @@ def ask_agent():
         except: pass
 
         db.session.commit()
-        return jsonify({"reply": reply})
+        # FIXED: JS refresh logic ke liye session_id bhejna
+        return jsonify({"reply": reply, "session_id": data.get('session_id', 'default')})
     except Exception as e: return jsonify({"error": str(e)}), 500
 
 @app.route('/save-leads', methods=['POST'])
@@ -203,7 +202,7 @@ def ask_agent():
 def save_leads():
     try:
         data = request.get_json()
-        leads_list = data.get('leads')
+        leads_list = data.get('leads', [])
         stats = LeadStats.query.filter_by(user_id=current_user.id).first()
         if stats:
             stats.total_saved += len(leads_list)
