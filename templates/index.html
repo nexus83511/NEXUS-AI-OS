@@ -168,7 +168,6 @@
             animation: fadeIn 0.3s ease forwards;
         }
 
-        /* --- NEW ADDITIONS --- */
         .typing-indicator {
             display: none;
             padding: 1rem;
@@ -192,6 +191,16 @@
         @keyframes wave {
             0%, 60%, 100% { transform: translateY(0); }
             30% { transform: translateY(-4px); }
+        }
+
+        /* Voice Visualizer effect */
+        .speaking .w-2 {
+            animation: pulse 0.5s infinite alternate;
+            background: #fbbf24 !important; /* Yellow when speaking */
+        }
+        @keyframes pulse {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(1.5); opacity: 0.5; }
         }
     </style>
 </head>
@@ -302,8 +311,8 @@
                 <div class="flex flex-col gap-2">
                     <textarea id="knowledgeBase" class="training-input p-3 rounded-xl h-12 focus:h-24 outline-none resize-none" placeholder="Company background or extracted data..."></textarea>
                     <div class="flex gap-2">
-                        <input type="file" id="pdfFile" accept=".pdf" class="hidden">
-                        <button onclick="document.getElementById('pdfFile').click()" class="flex-1 text-[9px] bg-slate-800 py-2 rounded-lg border border-white/10 font-bold hover:bg-slate-700 transition-all">ATTACH PDF</button>
+                        <input type="file" id="pdfFile" accept=".pdf" class="hidden" onchange="updateFileName(this)">
+                        <button onclick="document.getElementById('pdfFile').click()" id="pdfBtnLabel" class="flex-1 text-[9px] bg-slate-800 py-2 rounded-lg border border-white/10 font-bold hover:bg-slate-700 transition-all truncate px-2">ATTACH PDF</button>
                         <button onclick="uploadPDF()" id="uploadBtn" class="flex-1 text-[9px] bg-sky-600 py-2 rounded-lg font-black tracking-widest hover:bg-sky-500 transition-all shadow-lg shadow-sky-500/20">EXTRACT DATA</button>
                     </div>
                 </div>
@@ -350,12 +359,12 @@
             </div>
         </div>
 
-        <div class="p-6 bg-gradient-to-t from-[#0f172a] via-[#0f172a] to-transparent">
+        <div class="p-4 md:p-6 bg-gradient-to-t from-[#0f172a] via-[#0f172a] to-transparent">
             <div class="max-w-[950px] mx-auto space-y-4">
                 <div class="relative flex items-center group">
-                    <input type="text" id="userInput" class="w-full bg-slate-800/80 border border-white/10 p-5 rounded-3xl text-sm focus:outline-none focus:border-sky-500/50 pr-20 shadow-2xl transition-all" placeholder="Enter target industry, location or lead search command...">
-                    <button onclick="sendMessage()" class="absolute right-3 bg-sky-500 hover:bg-sky-400 text-slate-900 p-3.5 rounded-2xl transition-all active:scale-90 shadow-lg shadow-sky-500/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 send-btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                    <input type="text" id="userInput" class="w-full bg-slate-800/80 border border-white/10 p-4 md:p-5 rounded-3xl text-sm focus:outline-none focus:border-sky-500/50 pr-16 md:pr-20 shadow-2xl transition-all" placeholder="Enter command...">
+                    <button onclick="sendMessage()" class="absolute right-2 md:right-3 bg-sky-500 hover:bg-sky-400 text-slate-900 p-3 md:p-3.5 rounded-2xl transition-all active:scale-90 shadow-lg shadow-sky-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 send-btn-icon" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                         </svg>
                     </button>
@@ -377,6 +386,15 @@
         const activeSessionId = document.getElementById('active_session_val').value;
         const messagesBox = document.getElementById('messages');
         const typingIndicator = document.getElementById('typing');
+
+        // NEW: Feedback when user selects a file
+        function updateFileName(input) {
+            const label = document.getElementById('pdfBtnLabel');
+            if (input.files.length > 0) {
+                label.innerText = input.files[0].name;
+                label.classList.add('text-sky-400', 'border-sky-500/30');
+            }
+        }
 
         // SIDEBAR TOGGLE
         function toggleSidebar() {
@@ -422,7 +440,7 @@
             }
         }
 
-        // VOICE LOGIC
+        // VOICE LOGIC + ANIMATION
         function playAIVoice(button) {
             const bubble = button.closest('.ai-msg-bubble');
             const textToSpeak = bubble.querySelector('.text-content').innerText;
@@ -437,13 +455,20 @@
             const qualityVoice = voices.find(v => v.name.includes('Google UK English Female') || v.name.includes('Female'));
             if (qualityVoice) utterance.voice = qualityVoice;
             
+            // Add visual feedback
+            bubble.classList.add('speaking');
             button.innerText = "SPEAKING...";
-            utterance.onend = () => { button.innerText = "LISTEN"; };
+            
+            utterance.onend = () => { 
+                button.innerText = "LISTEN"; 
+                bubble.classList.remove('speaking');
+            };
             window.speechSynthesis.speak(utterance);
         }
 
         function stopVoice() {
             window.speechSynthesis.cancel();
+            document.querySelectorAll('.ai-msg-bubble').forEach(b => b.classList.remove('speaking'));
         }
 
         // CORE MESSAGING LOGIC
@@ -458,8 +483,8 @@
                 </div>`;
             
             input.value = '';
-            typingIndicator.style.display = 'block'; // Show typing
-            messagesBox.appendChild(typingIndicator); // Keep indicator at bottom
+            typingIndicator.style.display = 'block'; 
+            messagesBox.appendChild(typingIndicator); 
             messagesBox.scrollTop = messagesBox.scrollHeight;
 
             try {
@@ -475,7 +500,7 @@
                 });
                 const data = await response.json();
                 
-                typingIndicator.style.display = 'none'; // Hide typing
+                typingIndicator.style.display = 'none'; 
 
                 if (activeSessionId === "None" || activeSessionId === "default") {
                     window.location.href = "/?chat_id=" + data.session_id;
