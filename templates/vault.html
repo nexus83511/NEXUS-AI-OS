@@ -1,64 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Nexus AI | Lead Vault</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus OS | Lead Vault</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #020617; }
-        .glass { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .lead-row:hover { background: rgba(51, 65, 85, 0.5); transition: 0.3s; }
+        .status-badge { background: linear-gradient(90deg, #3b82f6, #2dd4bf); }
     </style>
 </head>
-<body class="text-slate-200 p-6 md:p-12">
+<body class="p-4 md:p-8">
+
     <div class="max-w-6xl mx-auto">
-        <div class="flex justify-between items-center mb-12">
+        <div class="flex justify-between items-center mb-8">
             <div>
-                <h1 class="text-4xl font-black text-sky-400 tracking-tighter uppercase">Lead Vault</h1>
-                <p class="text-slate-500 text-sm font-bold uppercase tracking-widest">Long-Term Memory Storage</p>
+                <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                    <i class="fas fa-vault mr-2"></i> Lead Memory Vault
+                </h1>
+                <p class="text-slate-400 text-sm">Nexus AI automatically remembers every lead's pain and budget.</p>
             </div>
-            <a href="/" class="glass px-6 py-2 rounded-xl text-xs font-bold hover:bg-sky-500 hover:text-slate-900 transition-all">RETURN TO DASHBOARD</a>
+            <a href="/" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm border border-slate-700 transition">
+                <i class="fas fa-arrow-left mr-2"></i> Back to Chat
+            </a>
         </div>
 
-        {% if not memories %}
-        <div class="text-center py-20 glass rounded-[40px]">
-            <p class="text-slate-500 font-bold uppercase tracking-widest">Vault is empty. Start talking to leads to build memory.</p>
-        </div>
-        {% else %}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for m in memories %}
-            <div class="glass p-8 rounded-[32px] hover:border-sky-500/30 transition-all group">
-                <div class="flex justify-between items-start mb-6">
-                    <div class="w-12 h-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-400 font-black text-xl">
-                        {{ m.lead_identifier[0]|upper }}
-                    </div>
-                    <span class="text-[10px] text-slate-500 font-mono">{{ m.last_updated.strftime('%Y-%m-%d') }}</span>
-                </div>
-                
-                <h3 class="text-xl font-bold text-white mb-1">{{ m.lead_identifier }}</h3>
-                <p class="text-sky-400 text-xs font-bold uppercase tracking-tight mb-4">{{ m.company if m.company != 'Unknown' else 'No Company' }}</p>
-                
-                <div class="space-y-4">
-                    <div class="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
-                        <p class="text-[10px] text-slate-500 font-black uppercase mb-1">Pain Point</p>
-                        <p class="text-sm text-slate-300">{{ m.pain_points if m.pain_points != 'Unknown' else 'Analyzing...' }}</p>
-                    </div>
-                    
-                    <div class="flex gap-4">
-                        <div class="flex-1 bg-slate-950/50 p-4 rounded-2xl border border-white/5">
-                            <p class="text-[10px] text-slate-500 font-black uppercase mb-1">Budget</p>
-                            <p class="text-sm font-bold text-green-400">{{ m.budget if m.budget != 'Unknown' else 'TBD' }}</p>
-                        </div>
-                    </div>
-
-                    <div class="pt-4 border-t border-white/5">
-                        <p class="text-[10px] text-slate-500 font-black uppercase mb-2">Last Summary</p>
-                        <p class="text-xs text-slate-400 italic leading-relaxed">"{{ m.summary[:120] }}..."</p>
-                    </div>
-                </div>
+        <div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-800/50 text-slate-300 text-xs uppercase font-semibold">
+                        <tr>
+                            <th class="p-4 border-b border-slate-700">Lead / Company</th>
+                            <th class="p-4 border-b border-slate-700">Pain Points</th>
+                            <th class="p-4 border-b border-slate-700 text-center">Budget</th>
+                            <th class="p-4 border-b border-slate-700">Last AI Talk Summary</th>
+                            <th class="p-4 border-b border-slate-700 text-right">Last Seen</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-200 divide-y divide-slate-700/50">
+                        {% for memory in memories %}
+                        <tr class="lead-row">
+                            <td class="p-4">
+                                <div class="font-bold text-blue-300">{{ memory.lead_identifier }}</div>
+                                <div class="text-xs text-slate-500"><i class="fas fa-building mr-1"></i> {{ memory.company if memory.company else 'N/A' }}</div>
+                            </td>
+                            <td class="p-4">
+                                <span class="text-sm italic text-slate-300">
+                                    "{{ memory.pain_points if memory.pain_points else 'Not identified yet...' }}"
+                                </span>
+                            </td>
+                            <td class="p-4 text-center">
+                                <span class="px-3 py-1 rounded-full text-xs font-bold status-badge text-white">
+                                    {{ memory.budget if memory.budget else 'TBD' }}
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <p class="text-xs text-slate-400 line-clamp-2 max-w-xs">
+                                    {{ memory.summary }}
+                                </p>
+                            </td>
+                            <td class="p-4 text-right text-xs text-slate-500">
+                                {{ memory.last_updated.strftime('%d %b, %H:%M') }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="p-12 text-center text-slate-500">
+                                <i class="fas fa-ghost text-4xl mb-4 block"></i>
+                                No memories found. Start a chat to save leads!
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            {% endfor %}
         </div>
-        {% endif %}
+
+        <div class="mt-6 flex gap-4">
+            <div class="glass-card p-4 rounded-xl flex-1 text-center">
+                <div class="text-slate-400 text-xs uppercase">Total Memorized</div>
+                <div class="text-2xl font-bold text-emerald-400">{{ memories|length }}</div>
+            </div>
+            <div class="glass-card p-4 rounded-xl flex-1 text-center">
+                <div class="text-slate-400 text-xs uppercase">System Status</div>
+                <div class="text-2xl font-bold text-blue-400">Live Context</div>
+            </div>
+        </div>
     </div>
+
 </body>
 </html>
