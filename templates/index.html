@@ -154,11 +154,6 @@
             box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
         }
 
-        /* SEND BUTTON ROTATION FIX */
-        .send-btn-icon {
-            transform: rotate(0deg);
-        }
-
         /* ANIMATIONS */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -194,20 +189,52 @@
             30% { transform: translateY(-4px); }
         }
 
-        /* Voice Visualizer effect */
         .speaking .w-2 {
             animation: pulse 0.5s infinite alternate;
-            background: #fbbf24 !important; /* Yellow when speaking */
+            background: #fbbf24 !important;
         }
         @keyframes pulse {
             from { transform: scale(1); opacity: 1; }
             to { transform: scale(1.5); opacity: 0.5; }
         }
 
-        /* NEW: Button Glow Effect */
         .btn-glow:hover {
             box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
             transform: translateY(-1px);
+        }
+
+        /* NEW: Floating Menu for Plus Button */
+        #plusMenu {
+            display: none;
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 8px;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        
+        #plusMenu button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            color: white;
+            font-size: 12px;
+            border-radius: 10px;
+            width: 150px;
+        }
+
+        #plusMenu button:hover { background: rgba(56, 189, 248, 0.1); color: var(--accent-color); }
+
+        .mic-active {
+            color: #ef4444 !important;
+            animation: pulse 1s infinite;
         }
     </style>
 </head>
@@ -239,12 +266,12 @@
             </div>
         </div>
         
-        <a href="/" class="mb-8 flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white py-4 rounded-2xl font-bold text-xs transition-all shadow-lg shadow-sky-500/20 active:scale-95 btn-glow">
+        <button onclick="resetChat()" class="w-full mb-8 flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white py-4 rounded-2xl font-bold text-xs transition-all shadow-lg shadow-sky-500/20 active:scale-95 btn-glow">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
             </svg>
             START NEW CHAT
-        </a>
+        </button>
 
         <div class="flex-grow overflow-y-auto space-y-2 pr-2 no-scrollbar" id="historyContainer">
             <p class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-4 px-2">Recent Intelligence</p>
@@ -368,13 +395,32 @@
 
         <div class="p-4 md:p-6 bg-gradient-to-t from-[#0f172a] via-[#0f172a] to-transparent">
             <div class="max-w-[950px] mx-auto space-y-4">
-                <div class="relative flex items-center group">
-                    <input type="text" id="userInput" class="w-full bg-slate-800/80 border border-white/10 p-4 md:p-5 rounded-3xl text-sm focus:outline-none focus:border-sky-500/50 pr-16 md:pr-20 shadow-2xl transition-all" placeholder="Enter command...">
-                    <button onclick="sendMessage()" class="absolute right-2 md:right-3 bg-sky-500 hover:bg-sky-400 text-slate-900 p-3 md:p-3.5 rounded-2xl transition-all active:scale-90 shadow-lg shadow-sky-500/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 send-btn-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                        </svg>
+                <div class="relative flex items-center gap-2">
+                    <button onclick="togglePlusMenu()" class="bg-slate-800 text-slate-300 p-4 rounded-2xl hover:bg-slate-700 transition-all border border-white/5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     </button>
+
+                    <div id="plusMenu" class="flex">
+                        <button onclick="document.getElementById('pdfFile').click()">📄 Attach File</button>
+                        <button onclick="alert('Image Feature coming soon')">🖼️ Upload Image</button>
+                        <button onclick="alert('Camera active')">📸 Open Camera</button>
+                    </div>
+
+                    <div class="relative flex-grow">
+                        <input type="text" id="userInput" class="w-full bg-slate-800/80 border border-white/10 p-4 md:p-5 rounded-3xl text-sm focus:outline-none focus:border-sky-500/50 pr-24 shadow-2xl transition-all" placeholder="Enter command...">
+                        
+                        <button id="micBtn" onclick="startVoiceInput()" class="absolute right-14 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-400 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                        </button>
+
+                        <button onclick="sendMessage()" class="absolute right-2 top-1/2 -translate-y-1/2 bg-sky-500 hover:bg-sky-400 text-slate-900 p-3 rounded-2xl transition-all active:scale-90 shadow-lg shadow-sky-500/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="flex overflow-x-auto gap-3 pb-2 no-scrollbar scroll-smooth">
@@ -394,7 +440,34 @@
         const messagesBox = document.getElementById('messages');
         const typingIndicator = document.getElementById('typing');
 
-        // FEEDBACK: File selection
+        // NEW CHAT FIX: Clears session and UI
+        function resetChat() {
+            document.getElementById('messages').innerHTML = '';
+            document.getElementById('productDetails').value = '';
+            document.getElementById('knowledgeBase').value = '';
+            window.location.href = "/"; // Fresh load without chat_id
+        }
+
+        function togglePlusMenu() {
+            const menu = document.getElementById('plusMenu');
+            menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        // Voice Input (Web Speech API)
+        function startVoiceInput() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            const micBtn = document.getElementById('micBtn');
+            
+            recognition.onstart = () => micBtn.classList.add('mic-active');
+            recognition.onend = () => micBtn.classList.remove('mic-active');
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('userInput').value = transcript;
+            };
+            recognition.start();
+        }
+
         function updateFileName(input) {
             const label = document.getElementById('pdfBtnLabel');
             if (input.files.length > 0) {
@@ -403,18 +476,15 @@
             }
         }
 
-        // SIDEBAR TOGGLE
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('sidebarOverlay').classList.toggle('active');
         }
 
-        // THEME SWITCHER
         function toggleTheme() {
             document.body.classList.toggle('light-mode');
         }
 
-        // COPY TO CLIPBOARD
         function copyToClipboard(btn) {
             const text = btn.closest('.ai-msg-bubble').querySelector('.text-content').innerText;
             navigator.clipboard.writeText(text);
@@ -423,7 +493,6 @@
             setTimeout(() => btn.innerText = originalText, 2000);
         }
 
-        // PDF DATA EXTRACTION
         async function uploadPDF() {
             const fileInput = document.getElementById('pdfFile');
             const btn = document.getElementById('uploadBtn');
@@ -432,39 +501,26 @@
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             btn.innerText = "PROCESSING...";
-            btn.classList.add('animate-pulse');
             
             try {
                 const response = await fetch('/upload-pdf', { method: 'POST', body: formData });
                 const data = await response.json();
                 document.getElementById('knowledgeBase').value = data.text;
                 btn.innerText = "EXTRACTED ✅";
-                btn.classList.remove('animate-pulse');
                 setTimeout(() => btn.innerText = "EXTRACT DATA", 3000);
             } catch (e) { 
                 btn.innerText = "ERROR ❌";
-                btn.classList.remove('animate-pulse');
             }
         }
 
-        // VOICE LOGIC + ANIMATION
         function playAIVoice(button) {
             const bubble = button.closest('.ai-msg-bubble');
             const textToSpeak = bubble.querySelector('.text-content').innerText;
-            
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            utterance.rate = 1.0; 
-            utterance.pitch = 1.0;
             utterance.lang = 'en-GB';
-
-            const voices = window.speechSynthesis.getVoices();
-            const qualityVoice = voices.find(v => v.name.includes('Google UK English Female') || v.name.includes('Female'));
-            if (qualityVoice) utterance.voice = qualityVoice;
-            
             bubble.classList.add('speaking');
             button.innerText = "SPEAKING...";
-            
             utterance.onend = () => { 
                 button.innerText = "LISTEN"; 
                 bubble.classList.remove('speaking');
@@ -477,7 +533,6 @@
             document.querySelectorAll('.ai-msg-bubble').forEach(b => b.classList.remove('speaking'));
         }
 
-        // CORE MESSAGING LOGIC
         async function sendMessage() {
             const input = document.getElementById('userInput');
             if(!input.value.trim()) return;
@@ -505,7 +560,6 @@
                     })
                 });
                 const data = await response.json();
-                
                 typingIndicator.style.display = 'none'; 
 
                 if (activeSessionId === "None" || activeSessionId === "default") {
@@ -520,7 +574,6 @@
                             <div class="text-sm leading-relaxed text-content whitespace-pre-wrap">${data.reply.replace(/\n/g, '<br>')}</div>
                             <div class="flex flex-wrap gap-2 mt-5">
                                 <button onclick="playAIVoice(this)" class="text-[9px] bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg font-black transition-all uppercase border border-white/5 flex items-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
                                     Listen
                                 </button>
                                 <button onclick="copyToClipboard(this)" class="text-[9px] bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg font-black transition-all uppercase border border-white/5">Copy</button>
@@ -530,11 +583,9 @@
                 }
             } catch (error) {
                 typingIndicator.style.display = 'none';
-                console.error("Nexus API Error:", error);
             }
         }
 
-        // QUICK ACTIONS
         function quickAction(cmd) {
             document.getElementById('userInput').value = cmd;
             sendMessage();
@@ -553,17 +604,8 @@
             if (e.key === "Enter") sendMessage();
         });
 
-        // NEW: Auto-expand textareas
-        document.querySelectorAll('textarea').forEach(el => {
-            el.addEventListener('input', () => {
-                el.style.height = '48px';
-                el.style.height = (el.scrollHeight) + 'px';
-            });
-        });
-
         window.onload = () => {
             messagesBox.scrollTop = messagesBox.scrollHeight;
-            window.speechSynthesis.getVoices();
         };
     </script>
 </body>
