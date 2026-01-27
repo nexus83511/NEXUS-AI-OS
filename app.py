@@ -71,18 +71,13 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 @app.route('/')
 @login_required
 def home():
-    # FIXED: session_id query se lena aur HTML ko bhejna
     chat_id = request.args.get('chat_id', 'default')
-    
-    # DB se history nikaalna
     history = ChatMessage.query.filter_by(user_id=current_user.id).order_by(ChatMessage.timestamp.asc()).all()
-    
-    # FIXED: Sidebar ke liye sessions ki empty list bhej rahe hain taake error na aaye
     return render_template('index.html', 
                            name=current_user.username, 
                            chat_history=history, 
                            active_session=chat_id,
-                           sessions=[]) # Aapke HTML mein {% for s in sessions %} hai isliye ye zaroori hai
+                           sessions=[])
 
 @app.route('/delete-chat', methods=['POST'])
 @login_required
@@ -100,6 +95,7 @@ def lead_vault():
     memories = LeadMemory.query.filter_by(user_id=current_user.id).order_by(LeadMemory.last_updated.desc()).all()
     return render_template('vault.html', memories=memories)
 
+# --- AUTH ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -152,6 +148,7 @@ def upload_pdf():
         return jsonify({"text": extracted_text[:7000]})
     except Exception as e: return jsonify({"error": str(e)}), 500
 
+# --- CORE AI AGENT WITH MEMORY ---
 @app.route('/ask-agent', methods=['POST'])
 @login_required
 def ask_agent():
@@ -160,42 +157,75 @@ def ask_agent():
         user_query = data.get('message')
         prod_context = data.get('product_context', '')
         kb_context = data.get('kb_context', '')
+        session_id = data.get('session_id', 'default')
 
+        # 1. RETRIEVE MEMORY: Last updated lead ki details fetch karna context ke liye
+        existing_mem = LeadMemory.query.filter_by(user_id=current_user.id).order_by(LeadMemory.last_updated.desc()).first()
+        lead_context = ""
+        if existing_mem:
+            lead_context = f"\n[ACTIVE LEAD MEMORY]: Current Person: {existing_mem.lead_identifier}, Company: {existing_mem.company}, Pain Points: {existing_mem.pain_points}, Budget: {existing_mem.budget}."
+
+        # 2. FETCH CHAT HISTORY
         past_chats = ChatMessage.query.filter_by(user_id=current_user.id).order_by(ChatMessage.timestamp.asc()).all()
         
-        # FIXED: AI ko system message mein training context dena
-        system_content = f"You are Nexus AI. Boss: {current_user.username}. Product: {prod_context}. Knowledge: {kb_context}."
-        messages = [{"role": "system", "content": system_content}]
+        # 3. CONSTRUCT SYSTEM PROMPT
+        system_content = (
+            f"You are Nexus AI, a professional sales Closer. Boss: {current_user.username}. "
+            f"Product: {prod_context}. Knowledge Base: {kb_context}. "
+            f"{lead_context} "
+            "IMPORTANT: Don't ask for info you already have in [ACTIVE LEAD MEMORY]. "
+            "Be conversational, personalized, and empathetic."
+        )
         
+        messages = [{"role": "system", "content": system_content}]
         for chat in past_chats:
             messages.append({"role": chat.role, "content": chat.content})
-        
         messages.append({"role": "user", "content": user_query})
 
+        # 4. GET AI RESPONSE
         response = client.chat.completions.create(model="gpt-4o", messages=messages)
         reply = response.choices[0].message.content
         
+        # Save Interaction to History
         db.session.add(ChatMessage(user_id=current_user.id, role="user", content=user_query))
         db.session.add(ChatMessage(user_id=current_user.id, role="assistant", content=reply))
 
-        # Extraction Logic (Waisa hi rakha hai jaisa aapne diya tha)
-        extraction_prompt = f"Extract info from: '{user_query}'. Return JSON ONLY: {{\"name\": \"...\", \"company\": \"...\", \"pain\": \"...\", \"budget\": \"...\"}}."
-        extract_res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": extraction_prompt}])
+        # 5. EXTRACTION LOGIC: Background mein details update karna
+        extraction_prompt = (
+            f"Analyze this message: '{user_query}'. "
+            "Extract lead info into JSON only. Use 'Unknown' if not found. "
+            "JSON structure: {\"name\": \"...\", \"company\": \"...\", \"pain\": \"...\", \"budget\": \"...\"}"
+        )
+        
+        extract_res = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role": "user", "content": extraction_prompt}],
+            response_format={ "type": "json_object" }
+        )
+        
         try:
             l_data = json.loads(extract_res.choices[0].message.content)
             if l_data.get('name') and l_data.get('name') != "Unknown":
+                # Check if lead exists, otherwise create
                 mem = LeadMemory.query.filter_by(lead_identifier=l_data['name'], user_id=current_user.id).first()
                 if not mem:
                     mem = LeadMemory(lead_identifier=l_data['name'], user_id=current_user.id)
                     db.session.add(mem)
-                mem.company, mem.pain_points, mem.budget = l_data.get('company'), l_data.get('pain'), l_data.get('budget')
+                
+                # Update fields if AI found new info
+                if l_data.get('company') != "Unknown": mem.company = l_data['company']
+                if l_data.get('pain') != "Unknown": mem.pain_points = l_data['pain']
+                if l_data.get('budget') != "Unknown": mem.budget = l_data['budget']
                 mem.summary = reply[:200]
-        except: pass
+                mem.last_updated = datetime.utcnow()
+        except:
+            pass
 
         db.session.commit()
-        # FIXED: JS refresh logic ke liye session_id bhejna
-        return jsonify({"reply": reply, "session_id": data.get('session_id', 'default')})
-    except Exception as e: return jsonify({"error": str(e)}), 500
+        return jsonify({"reply": reply, "session_id": session_id})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/save-leads', methods=['POST'])
 @login_required
