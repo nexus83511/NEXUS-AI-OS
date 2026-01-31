@@ -107,12 +107,12 @@ def login():
         
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form
-        email = data.get('email') # Email based
+        email = data.get('email')
         password = data.get('password')
         
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
-            login_user(user, remember=True) # "Remember Me" logic
+            login_user(user, remember=True)
             session.permanent = True
             return jsonify({"success": True}) if request.is_json else redirect(url_for('home'))
         
@@ -151,7 +151,6 @@ def forgot_password():
         user = User.query.filter_by(email=email).first()
         if user:
             flash('Reset link sent to your email (Simulation)')
-            # Yahan Flask-Mail ka logic ayega future mein
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
@@ -161,12 +160,25 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- CORE AI AGENT & REST OF CODE (Unchanged) ---
+# --- NEW: LIVE MEMORY FETCH ROUTE ---
+@app.route('/get-current-memory')
+@login_required
+def get_current_memory():
+    # Last updated lead nikaalte hain UI update karne ke liye
+    mem = LeadMemory.query.filter_by(user_id=current_user.id).order_by(LeadMemory.last_updated.desc()).first()
+    if mem:
+        return jsonify({
+            "name": mem.lead_identifier,
+            "company": mem.company or "N/A",
+            "pain": mem.pain_points or "Identifying...",
+            "budget": mem.budget or "Analyzing..."
+        })
+    return jsonify({"name": None})
+
+# --- CORE AI AGENT ---
 @app.route('/ask-agent', methods=['POST'])
 @login_required
 def ask_agent():
-    # ... [Aapka ask_agent wala sara code jo upar discuss hua tha yahan rahega] ...
-    # (Pichle reply wala extraction aur memory logic)
     try:
         data = request.get_json()
         user_query = data.get('message')
@@ -190,8 +202,7 @@ def ask_agent():
         db.session.add(ChatMessage(user_id=current_user.id, role="user", content=user_query))
         db.session.add(ChatMessage(user_id=current_user.id, role="assistant", content=reply))
 
-        # Memory Extraction Logic
-        extraction_prompt = f"Extract lead from: '{user_query}' into JSON {{'name','company','pain','budget'}}"
+        extraction_prompt = f"Extract lead from: '{user_query}' into JSON {{'name','company','pain','budget'}}. If not found use 'Unknown'."
         extract_res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": extraction_prompt}], response_format={"type": "json_object"})
         
         try:
@@ -201,9 +212,9 @@ def ask_agent():
                 if not mem:
                     mem = LeadMemory(lead_identifier=l_data['name'], user_id=current_user.id)
                     db.session.add(mem)
-                mem.company = l_data.get('company', mem.company)
-                mem.pain_points = l_data.get('pain', mem.pain_points)
-                mem.budget = l_data.get('budget', mem.budget)
+                if l_data.get('company') != "Unknown": mem.company = l_data['company']
+                if l_data.get('pain') != "Unknown": mem.pain_points = l_data['pain']
+                if l_data.get('budget') != "Unknown": mem.budget = l_data['budget']
                 mem.last_updated = datetime.utcnow()
         except: pass
 
