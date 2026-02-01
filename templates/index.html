@@ -69,29 +69,16 @@
             }
         }
 
-        /* MAIN CONTENT AREA */
-        /* Purane .main-wrapper ko isse replace karein */
-.main-wrapper {
-    flex: 1; /* Ye sabse zaroori hai, taake chat center mein rahe */
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow: hidden;
-    min-width: 0; /* Isse layout break nahi hoga */
-}
-
-/* Engine Panel ki width fix karein */
-.engine-panel {
-    width: 300px;
-    min-width: 300px; /* Isse ye pichkega nahi */
-    background: rgba(15, 23, 42, 0.95);
-    border-left: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    padding: 1.5rem;
-    z-index: 900;
-}
+       /* MAIN CONTENT AREA - FIXED */
+        .main-wrapper {
+            flex: 1;              /* Chatbot ko center mein stretch karne ke liye */
+            min-width: 0;         /* Layout ko pichakne se bachane ke liye */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
 
         /* MESSAGING INTERFACE */
         #messages {
@@ -106,7 +93,6 @@
             margin: 0 auto;
             scroll-behavior: smooth;
         }
-
         .glass-card {
             background: var(--card-bg);
             backdrop-filter: blur(12px);
@@ -348,6 +334,49 @@
                 </a>
             </div>
         </nav>
+        <div id="messages" class="flex-grow overflow-y-auto">
+            </div>
+
+        <div class="p-6 bg-slate-900/50 backdrop-blur-xl border-t border-white/5">
+            <div class="max-w-4xl mx-auto relative">
+                <input type="text" id="userInput" placeholder="Ask Nexus..." 
+                    class="w-full bg-slate-800/50 border border-slate-700 p-4 rounded-2xl focus:outline-none focus:border-sky-500 transition-all pr-16 text-white text-sm">
+                <button onclick="sendMessage()" class="absolute right-2 top-2 p-3 bg-sky-500 text-white rounded-xl hover:bg-sky-400 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div> ```
+
+---
+
+### 2. Nexus Engine Panel (Wrapper ke BAHAR)
+Ab main-wrapper band hone ke baad, ye **Engine Panel** ka code lagayein:
+
+```html
+    <aside class="engine-panel hidden xl:flex">
+        <div class="w-full">
+            <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-8">Nexus Engine v4.0</h3>
+            
+            <div class="bg-white/5 border border-white/10 p-6 rounded-3xl mb-6 shadow-2xl">
+                <p class="text-[10px] text-slate-500 font-bold uppercase mb-4">Deal Probability</p>
+                <div class="text-5xl font-black text-sky-400 mb-5" id="leadProb">0%</div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div id="probBar" class="bg-sky-400 h-full transition-all duration-700" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="bg-black/40 border border-white/5 p-4 rounded-3xl">
+                <p class="text-[9px] text-slate-600 font-bold uppercase mb-3 px-2">Live Analysis Logs</p>
+                <div id="engineLogs" class="h-64 overflow-y-auto font-mono text-[11px] text-emerald-400/90 p-2 space-y-2 no-scrollbar">
+                    <p class="opacity-50 text-[10px]">[SYS] Engine Core Online...</p>
+                    <p class="opacity-50 text-[10px]">[SYS] Sentiment Link Established...</p>
+                </div>
+            </div>
+        </div>
+    </aside>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-slate-900/60 border-b border-white/5">
             <div class="flex flex-col gap-2">
@@ -466,19 +495,6 @@
             const menu = document.getElementById('plusMenu');
             menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
         }
-        <body>
-    <aside id="sidebar"> ... </aside>
-
-    <div class="main-wrapper">
-        <nav> ... </nav>
-        <div id="messages"> ... </div>
-        <div class="input-area"> ... </div>
-    </div> <aside class="engine-panel hidden xl:flex">
-        <h3 class="text-[10px] font-black text-slate-500 uppercase mb-6">Nexus Engine v4.0</h3>
-        <div id="leadProbDisplay">...</div>
-        <div id="engineLogs">...</div>
-    </aside>
-</body>
 
         // Voice Input (Web Speech API)
         function startVoiceInput() {
@@ -612,15 +628,15 @@
                 typingIndicator.style.display = 'none';
             }
         }
-        // sendMessage function ke andar typing indicator ke baad ye daalein:
+        // Ye Engine ko har message par update karega
+const randomProb = Math.floor(Math.random() * 40) + 55; // 55% se 95% ke beech
+document.getElementById('leadProb').innerText = randomProb + "%";
+document.getElementById('probBar').style.width = randomProb + "%";
 
-const prob = Math.floor(Math.random() * 50) + 30; 
-document.getElementById('leadProb').innerText = prob + "%";
-document.getElementById('probBar').style.width = prob + "%";
-
-// Logs update karne ke liye
-const logBox = document.getElementById('engineLogs');
-logBox.innerHTML += `<br><span class="text-amber-500">[${new Date().toLocaleTimeString()}] Analysis: High Intent</span>`;
+// Ek naya log add karne ke liye
+const logs = document.getElementById('engineLogs');
+logs.innerHTML += `<p class="text-sky-400">[${new Date().toLocaleTimeString()}] Analysis: High Intent Detected</p>`;
+logs.scrollTop = logs.scrollHeight; // Auto scroll logs
 
         function quickAction(cmd) {
             document.getElementById('userInput').value = cmd;
