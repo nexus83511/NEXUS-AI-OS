@@ -70,14 +70,28 @@
         }
 
         /* MAIN CONTENT AREA */
-        .main-wrapper {
-            flex-grow: 1;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
+        /* Purane .main-wrapper ko isse replace karein */
+.main-wrapper {
+    flex: 1; /* Ye sabse zaroori hai, taake chat center mein rahe */
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    min-width: 0; /* Isse layout break nahi hoga */
+}
+
+/* Engine Panel ki width fix karein */
+.engine-panel {
+    width: 300px;
+    min-width: 300px; /* Isse ye pichkega nahi */
+    background: rgba(15, 23, 42, 0.95);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    z-index: 900;
+}
 
         /* MESSAGING INTERFACE */
         #messages {
@@ -236,37 +250,6 @@
             color: #ef4444 !important;
             animation: pulse 1s infinite;
         }
-        /* Follow-Up Engine Special Styles */
-.engine-panel {
-    width: 300px;
-    background: rgba(15, 23, 42, 0.95);
-    border-left: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    padding: 1.5rem;
-    z-index: 900;
-}
-
-.terminal-log {
-    font-family: 'monospace';
-    font-size: 10px;
-    background: #000;
-    color: #10b981;
-    padding: 10px;
-    border-radius: 8px;
-    height: 120px;
-    overflow-y: auto;
-    border: 1px solid #064e3b;
-    margin-top: 10px;
-}
-
-.followup-card {
-    background: linear-gradient(to right, rgba(251, 191, 36, 0.1), transparent);
-    border-left: 4px solid #fbbf24;
-    padding: 12px;
-    border-radius: 0 12px 12px 0;
-    margin: 10px 0;
-}
     </style>
 </head>
 <body>
@@ -383,34 +366,6 @@
                 </div>
             </div>
         </div>
-        <aside class="engine-panel hidden xl:flex">
-    <h3 class="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase mb-6">Nexus Engine v4.0</h3>
-    
-    <div class="space-y-4">
-        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-            <p class="text-[8px] text-slate-500 font-bold mb-1 uppercase">Deal Probability</p>
-            <div class="flex items-center gap-3">
-                <p class="text-2xl font-black text-sky-400" id="leadProb">0%</p>
-                <div class="flex-grow h-1 bg-slate-800 rounded-full overflow-hidden">
-                    <div id="probBar" class="h-full bg-sky-500 transition-all duration-1000" style="width: 0%"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-            <p class="text-[8px] text-slate-500 font-bold uppercase">Decision Logs</p>
-            <div class="terminal-log" id="engineLogs">
-                [SYS] Engine Ready...<br>
-                [SYS] Monitoring Sentiment...
-            </div>
-        </div>
-
-        <div id="followupTasks" class="space-y-2">
-            <p class="text-[9px] font-black text-slate-500 uppercase px-1">Scheduled Nudges</p>
-            <div class="text-[9px] text-slate-600 italic px-1">Awaiting interaction...</div>
-        </div>
-    </div>
-</aside>
 
         <div id="messages">
             {% if not chat_history %}
@@ -511,6 +466,19 @@
             const menu = document.getElementById('plusMenu');
             menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
         }
+        <body>
+    <aside id="sidebar"> ... </aside>
+
+    <div class="main-wrapper">
+        <nav> ... </nav>
+        <div id="messages"> ... </div>
+        <div class="input-area"> ... </div>
+    </div> <aside class="engine-panel hidden xl:flex">
+        <h3 class="text-[10px] font-black text-slate-500 uppercase mb-6">Nexus Engine v4.0</h3>
+        <div id="leadProbDisplay">...</div>
+        <div id="engineLogs">...</div>
+    </aside>
+</body>
 
         // Voice Input (Web Speech API)
         function startVoiceInput() {
@@ -597,15 +565,6 @@
             if(!input.value.trim()) return;
             
             const text = input.value;
-            // AI reply ke andar ye div include kar dein
-const followUpSuggestion = `
-<div class="followup-card mt-4">
-    <p class="text-[10px] font-black text-amber-500 uppercase mb-1">Engine Recommendation</p>
-    <p class="text-xs italic text-slate-300">Lead is hesitant. Suggesting a 10% discount nudge in 48 hours.</p>
-    <button class="mt-2 text-[9px] bg-amber-500 text-black px-3 py-1 rounded font-bold uppercase">Approve Nudge</button>
-</div>`;
-
-// Phir data.reply ke saath isse concatenate kar dein
             messagesBox.innerHTML += `
                 <div class="user-msg-bubble self-end rounded-2xl rounded-tr-none text-white p-6 max-w-[85%] text-sm shadow-xl msg-animate">
                     ${text}
@@ -613,25 +572,6 @@ const followUpSuggestion = `
             
             input.value = '';
             typingIndicator.style.display = 'block'; 
-            // --- FOLLOW-UP ENGINE LOGIC ---
-const prob = Math.floor(Math.random() * 50) + 30; // Random prob calculation
-document.getElementById('leadProb').innerText = prob + "%";
-document.getElementById('probBar').style.width = prob + "%";
-
-// Add to terminal log
-const time = new Date().toLocaleTimeString();
-const logBox = document.getElementById('engineLogs');
-logBox.innerHTML += `<br><span class="text-amber-500">[${time}] Sentiment: Potential Close</span>`;
-logBox.scrollTop = logBox.scrollHeight;
-
-// Update task list
-document.getElementById('followupTasks').innerHTML = `
-    <div class="bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
-        <p class="text-[9px] font-bold text-amber-500 uppercase">Next Follow-up: 24h</p>
-        <p class="text-[8px] text-slate-400">Strategy: Value Reinforcement</p>
-    </div>
-`;
-// --- END ENGINE LOGIC ---
             messagesBox.appendChild(typingIndicator); 
             messagesBox.scrollTop = messagesBox.scrollHeight;
 
@@ -672,6 +612,15 @@ document.getElementById('followupTasks').innerHTML = `
                 typingIndicator.style.display = 'none';
             }
         }
+        // sendMessage function ke andar typing indicator ke baad ye daalein:
+
+const prob = Math.floor(Math.random() * 50) + 30; 
+document.getElementById('leadProb').innerText = prob + "%";
+document.getElementById('probBar').style.width = prob + "%";
+
+// Logs update karne ke liye
+const logBox = document.getElementById('engineLogs');
+logBox.innerHTML += `<br><span class="text-amber-500">[${new Date().toLocaleTimeString()}] Analysis: High Intent</span>`;
 
         function quickAction(cmd) {
             document.getElementById('userInput').value = cmd;
