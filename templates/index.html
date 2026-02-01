@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus AI-OS | Enterprise Edition</title>
+    <title>Nexus AI-OS | Enterprise Edition v3.0</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        /* CSS VARIABLE SYSTEM FOR THEMES */
         :root {
             --bg-main: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
             --card-bg: rgba(30, 41, 59, 0.6);
@@ -17,7 +16,7 @@
             --sidebar-bg: #0f172a;
             --accent-color: #38bdf8;
             --border-color: rgba(255, 255, 255, 0.1);
-            --neon-glow: 0 0 20px rgba(56, 189, 248, 0.3);
+            --neon-glow: 0 0 15px rgba(56, 189, 248, 0.4);
         }
 
         .light-mode {
@@ -26,6 +25,7 @@
             --text-main: #1e293b;
             --sidebar-bg: #f8fafc;
             --border-color: rgba(0, 0, 0, 0.1);
+            --accent-color: #0284c7;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -40,7 +40,7 @@
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* SIDEBAR ARCHITECTURE */
+        /* --- SIDEBAR ARCHITECTURE --- */
         .sidebar {
             width: 300px;
             background: var(--sidebar-bg);
@@ -52,7 +52,7 @@
             display: flex;
             flex-direction: column;
             z-index: 1000;
-            transition: left 0.4s ease;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .sidebar.active { left: 0; }
@@ -62,7 +62,20 @@
             .hamburger { display: none; }
         }
 
-        /* MAIN CONTENT AREA */
+        /* --- ANALYTICS PANEL (RIGHT SIDE) --- */
+        .analytics-panel {
+            width: 320px;
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 1px solid var(--border-color);
+            padding: 1.5rem;
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 1440px) { .analytics-panel { display: flex; } }
+
+        /* --- MAIN CONTENT AREA --- */
         .main-wrapper {
             flex-grow: 1;
             height: 100vh;
@@ -72,7 +85,6 @@
             overflow: hidden;
         }
 
-        /* MESSAGING INTERFACE */
         #messages {
             flex-grow: 1;
             overflow-y: auto;
@@ -88,157 +100,152 @@
 
         .glass-card {
             background: var(--card-bg);
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
             border: 1px solid var(--border-color);
         }
 
-        /* MESSAGE BUBBLES */
+        /* --- MESSAGE STYLES --- */
         .ai-msg-bubble {
-            background: rgba(51, 65, 85, 0.4);
+            background: rgba(51, 65, 85, 0.3);
+            border: 1px solid var(--border-color);
             border-left: 4px solid var(--accent-color);
-            transition: transform 0.2s ease;
             position: relative;
         }
 
         .user-msg-bubble {
             background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.2);
+            box-shadow: 0 10px 20px -5px rgba(14, 165, 233, 0.3);
         }
 
-        /* SCROLLBAR */
-        #messages::-webkit-scrollbar { width: 5px; }
-        #messages::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
-
-        /* OVERLAYS */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 999;
+        /* --- TERMINAL LOGS --- */
+        .terminal-box {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            background: #000;
+            color: #10b981;
+            padding: 10px;
+            border-radius: 8px;
+            height: 150px;
+            overflow-y: auto;
+            border: 1px solid #064e3b;
         }
-        .sidebar-overlay.active { display: block; }
 
-        /* INPUT FIELD */
-        .training-input {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-color);
-            color: white;
-            font-size: 11px;
-            transition: all 0.3s ease;
+        /* --- CUSTOM SCROLLBAR --- */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* --- ANIMATIONS --- */
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
         }
-        .training-input:focus { border-color: var(--accent-color); outline: none; }
+        .scanner-line {
+            height: 2px;
+            background: var(--accent-color);
+            width: 100%;
+            position: absolute;
+            animation: scan 2s linear infinite;
+            opacity: 0.3;
+        }
 
-        /* ANIMATIONS */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .msg-animate { animation: fadeIn 0.3s ease forwards; }
-
-        /* TYING INDICATOR */
-        .typing-indicator { display: none; padding: 1.5rem; background: rgba(51, 65, 85, 0.2); border-radius: 1rem; width: fit-content; }
+        .typing-indicator { display: none; padding: 1rem; }
         .dot { display: inline-block; width: 6px; height: 6px; background: var(--accent-color); border-radius: 50%; margin-right: 3px; animation: wave 1.3s linear infinite; }
-        .dot:nth-child(2) { animation-delay: -1.1s; }
-        .dot:nth-child(3) { animation-delay: -0.9s; }
         @keyframes wave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
 
-        /* PLUS MENU EXTREME */
+        /* --- FLOATING MENU --- */
         #plusMenu {
             display: none;
             position: absolute;
-            bottom: 85px;
-            left: 0;
+            bottom: 90px;
+            left: 20px;
             background: #1e293b;
-            border: 1px solid var(--accent-color);
-            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
             padding: 12px;
             flex-direction: column;
             gap: 8px;
             z-index: 100;
             box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-            width: 220px;
+            animation: fadeIn 0.2s ease;
         }
-        
-        #plusMenu button {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            color: #cbd5e1;
-            font-size: 11px;
-            font-weight: 700;
-            border-radius: 14px;
-            width: 100%;
-            transition: all 0.2s;
-            background: rgba(255,255,255,0.03);
+
+        .status-pill {
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
         }
-        #plusMenu button:hover { background: var(--accent-color); color: #0f172a; }
 
-        .mic-active { color: #ef4444 !important; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        /* LEAD CHART WIDGET */
-        .chart-bar { height: 4px; border-radius: 2px; background: #334155; overflow: hidden; }
-        .chart-progress { height: 100%; background: var(--accent-color); transition: width 1s; }
-
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body>
+<body class="dark-mode">
 
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div id="sidebarOverlay" class="sidebar-overlay fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] hidden" onclick="toggleSidebar()"></div>
 
     <aside id="sidebar" class="sidebar p-6">
-        <div class="flex justify-between items-center mb-8">
-            <div class="flex items-center gap-2">
-                <div class="w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-sky-500/20">N</div>
+        <div class="flex justify-between items-center mb-10">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-sky-500/30">N</div>
                 <div>
-                    <h2 class="text-lg font-black tracking-tighter uppercase">Nexus <span class="text-sky-400">OS</span></h2>
-                    <p class="text-[8px] text-slate-500 font-bold tracking-[0.3em]">ENTERPRISE</p>
+                    <h2 class="text-xl font-black tracking-tighter">NEXUS <span class="text-sky-400">OS</span></h2>
+                    <p class="text-[8px] text-slate-500 font-bold tracking-widest">ENTERPRISE CLOUD</p>
                 </div>
             </div>
             <button onclick="toggleSidebar()" class="lg:hidden text-slate-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
             </button>
         </div>
 
-        <div class="bg-white/5 border border-white/5 rounded-2xl p-4 mb-6">
-            <p class="text-[9px] font-black text-slate-500 uppercase mb-4 tracking-widest">Global Performance</p>
-            <div class="space-y-4">
-                <div>
-                    <div class="flex justify-between text-[10px] font-bold mb-1">
-                        <span>Lead Conversion</span>
-                        <span class="text-sky-400">84%</span>
-                    </div>
-                    <div class="chart-bar"><div class="chart-progress" style="width: 84%"></div></div>
+        <div class="space-y-3 mb-8">
+            <div class="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                <div class="flex justify-between items-center mb-1">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">System Load</p>
+                    <p class="text-[10px] text-emerald-400 font-black" id="loadVal">14%</p>
                 </div>
-                <div>
-                    <div class="flex justify-between text-[10px] font-bold mb-1">
-                        <span>API Latency</span>
-                        <span class="text-emerald-500">12ms</span>
-                    </div>
-                    <div class="chart-bar"><div class="chart-progress bg-emerald-500" style="width: 95%"></div></div>
+                <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                    <div class="bg-emerald-500 h-full w-[14%]" id="loadBar"></div>
+                </div>
+            </div>
+            <div class="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                <div class="flex justify-between items-center mb-1">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">Intelligence Credits</p>
+                    <p class="text-[10px] text-sky-400 font-black">84.2k</p>
+                </div>
+                <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                    <div class="bg-sky-500 h-full w-[65%]"></div>
                 </div>
             </div>
         </div>
         
-        <button onclick="resetChat()" class="w-full mb-8 flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white py-4 rounded-2xl font-bold text-xs transition-all shadow-xl active:scale-95">
+        <button onclick="resetChat()" class="w-full mb-8 flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white py-4 rounded-2xl font-bold text-xs transition-all shadow-lg shadow-sky-500/20 active:scale-95">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" /></svg>
-            INITIATE NEW SESSION
+            INITIALIZE NEW SESSION
         </button>
 
         <div class="flex-grow overflow-y-auto space-y-2 no-scrollbar" id="historyContainer">
-            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-4">Memory Vault</p>
-            <div class="p-4 rounded-2xl bg-white/5 border border-white/5 text-xs text-slate-400 cursor-pointer hover:border-sky-500/30 transition-all">
-                Real Estate Dubai Leads...
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-4">Encrypted History</p>
+            <div class="space-y-2">
+                <div class="p-4 rounded-2xl text-xs text-slate-400 hover:bg-white/5 cursor-pointer border border-transparent transition-all truncate">
+                    <span class="text-sky-400 mr-2">●</span> Lead Analysis: Dubai Real Estate
+                </div>
+                <div class="p-4 rounded-2xl text-xs text-slate-400 hover:bg-white/5 cursor-pointer border border-transparent transition-all truncate">
+                    <span class="text-sky-400 mr-2">●</span> Cold Outreach Script v2
+                </div>
             </div>
-            </div>
+        </div>
 
         <div class="pt-6 border-t border-slate-800 mt-6">
-            <div class="flex items-center gap-4 p-3 bg-white/5 rounded-2xl border border-white/5">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-xs font-black text-white">SA</div>
+            <div class="flex items-center gap-4 p-3 bg-white/5 rounded-2xl">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-sm font-black text-slate-900 shadow-lg">U</div>
                 <div class="overflow-hidden">
-                    <p class="text-xs font-bold truncate">Admin Node</p>
-                    <p class="text-[9px] text-emerald-500 font-bold flex items-center gap-1.5 uppercase">
-                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Encrypted
+                    <p class="text-xs font-bold truncate text-white">Administrator</p>
+                    <p class="text-[9px] text-emerald-500 font-black tracking-widest flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> ONLINE
                     </p>
                 </div>
             </div>
@@ -249,223 +256,312 @@
         <nav class="flex items-center justify-between p-5 glass-card z-50">
             <div class="flex items-center gap-4">
                 <button onclick="toggleSidebar()" class="hamburger p-2.5 bg-slate-800 rounded-xl text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
                 </button>
                 <div>
-                    <h1 class="font-black text-sm tracking-widest uppercase italic">Nexus <span class="text-sky-400">Intelligence</span></h1>
-                    <p class="text-[9px] text-slate-500 font-bold tracking-widest">SQUAD-V3 AGENT ACTIVE</p>
+                    <h1 class="font-black text-sm tracking-widest uppercase italic">Nexus <span class="text-sky-400">Core</span></h1>
+                    <p class="text-[9px] text-slate-500 font-bold">NODE: GLOBAL-DX-01 // LATENCY: 24ms</p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                <button onclick="exportReport()" class="hidden md:flex items-center gap-2 bg-white/5 text-[10px] font-black px-4 py-2.5 rounded-xl border border-white/5 hover:bg-white/10 transition-all">
-                    REPORT.PDF
-                </button>
-                <button onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-sky-400">
-                    <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex gap-2 mr-4">
+                    <div class="px-3 py-1 bg-white/5 rounded-full border border-white/10 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase">API: ACTIVE</span>
+                    </div>
+                </div>
+                <button onclick="toggleTheme()" class="p-3 rounded-xl bg-slate-800 border border-slate-700 text-sky-400">
+                    <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
                 </button>
             </div>
         </nav>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 bg-slate-900/40 border-b border-white/5">
-            <div class="space-y-1">
-                <label class="text-[8px] font-black text-slate-500 uppercase ml-1">Context Engine</label>
-                <textarea id="productDetails" class="training-input w-full p-3 rounded-xl h-10 focus:h-20 outline-none resize-none" placeholder="Target niche..."></textarea>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-900/40 border-b border-white/5">
+            <div class="group relative">
+                <label class="text-[9px] font-black text-sky-500/70 ml-1 mb-1 block uppercase tracking-tighter">Product Intelligence</label>
+                <textarea id="productDetails" class="training-input w-full p-4 rounded-2xl bg-slate-900/60 border border-white/5 text-xs text-white outline-none focus:border-sky-500/50 transition-all resize-none h-14 focus:h-28" placeholder="Deploy product context here..."></textarea>
             </div>
-            <div class="space-y-1">
-                <label class="text-[8px] font-black text-slate-500 uppercase ml-1">Data Feeder</label>
+            <div class="flex flex-col gap-2">
+                <label class="text-[9px] font-black text-sky-500/70 ml-1 mb-1 block uppercase tracking-tighter">Knowledge Base Extractor</label>
                 <div class="flex gap-2">
-                    <textarea id="knowledgeBase" class="training-input flex-grow p-3 rounded-xl h-10 outline-none resize-none" placeholder="Paste data here..."></textarea>
-                    <button onclick="uploadPDF()" id="uploadBtn" class="bg-sky-600 px-4 rounded-xl text-[9px] font-black text-white hover:bg-sky-500 transition-all">AUTO EXTRACT</button>
+                    <textarea id="knowledgeBase" class="training-input flex-grow p-4 rounded-2xl bg-slate-900/60 border border-white/5 text-xs text-white outline-none focus:border-sky-500/50 transition-all resize-none h-14" placeholder="Raw data / Wiki content..."></textarea>
+                    <div class="flex flex-col gap-1">
+                        <input type="file" id="pdfFile" class="hidden" onchange="updateFileName(this)">
+                        <button onclick="document.getElementById('pdfFile').click()" id="pdfBtnLabel" class="p-3 bg-slate-800 rounded-xl hover:bg-slate-700 transition-all border border-white/5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                        </button>
+                        <button onclick="uploadPDF()" id="uploadBtn" class="p-3 bg-sky-600 rounded-xl hover:bg-sky-500 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div id="messages">
-            <div class="flex flex-col items-center justify-center py-20 opacity-40">
-                <div class="w-16 h-16 bg-sky-500/20 rounded-full flex items-center justify-center mb-4 border border-sky-500/30">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            <div class="flex flex-col items-center justify-center py-20 text-center opacity-50 group">
+                <div class="relative w-24 h-24 mb-6">
+                    <div class="absolute inset-0 bg-sky-500 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-all"></div>
+                    <div class="relative w-full h-full bg-slate-800 rounded-3xl border border-white/10 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
                 </div>
-                <h2 class="text-xl font-black">NEXUS READY</h2>
-                <p class="text-[10px] font-bold tracking-[0.2em] mt-2">AUTONOMOUS BUSINESS INTELLIGENCE</p>
+                <h2 class="text-3xl font-black tracking-tighter mb-2">SYSTEM READY</h2>
+                <p class="text-sm max-w-sm font-medium">Nexus Intelligence v3.0 is online. Input commands to begin extraction, analysis, or drafting.</p>
+            </div>
+
+            <div id="typing" class="typing-indicator ai-msg-bubble self-start rounded-2xl rounded-tl-none">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
             </div>
         </div>
 
-        <div class="p-4 md:p-8 bg-gradient-to-t from-slate-950 via-slate-950 to-transparent">
-            <div class="max-w-[900px] mx-auto space-y-4">
+        <div class="p-6 bg-gradient-to-t from-[#0f172a] via-[#0f172a] to-transparent">
+            <div class="max-w-[1000px] mx-auto">
                 
-                <div class="relative flex items-center gap-3">
-                    <div class="relative">
-                        <button onclick="togglePlusMenu()" class="bg-slate-800 text-white p-4 rounded-2xl border border-white/10 hover:bg-slate-700">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                        </button>
+                <div class="flex overflow-x-auto gap-2 mb-4 no-scrollbar pb-2">
+                    <button onclick="quickAction('Scrape top 5 competitors in SaaS')" class="whitespace-nowrap bg-slate-800/50 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition-all uppercase">⚡ Market Scrape</button>
+                    <button onclick="quickAction('Generate a LinkedIn outreach sequence')" class="whitespace-nowrap bg-slate-800/50 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition-all uppercase">✉️ Sequence Gen</button>
+                    <button onclick="quickAction('Analyze my lead list for churn risk')" class="whitespace-nowrap bg-slate-800/50 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition-all uppercase">🎯 Churn Audit</button>
+                    <button onclick="quickAction('Optimize my current sales deck')" class="whitespace-nowrap bg-slate-800/50 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition-all uppercase">📂 Pitch Deck Fix</button>
+                </div>
 
-                        <div id="plusMenu">
-                            <button onclick="document.getElementById('pdfFile').click()">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                ATTACH KNOWLEDGE
-                            </button>
-                            <button onclick="generateImage()">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                GENERATE VISUALS
-                            </button>
-                            <button onclick="startCamera()">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
-                                VISION SCAN
-                            </button>
-                        </div>
+                <div class="relative flex items-center gap-3">
+                    <button onclick="togglePlusMenu()" class="p-4 bg-slate-800 rounded-2xl border border-white/5 text-slate-400 hover:text-sky-400 transition-all shadow-xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                    </button>
+
+                    <div id="plusMenu">
+                        <button onclick="document.getElementById('pdfFile').click()" class="hover:bg-sky-500/10 transition-colors">📄 Attach Intelligence</button>
+                        <button onclick="alert('Module loading...')" class="hover:bg-sky-500/10 transition-colors">🖼️ Neural Image Scan</button>
+                        <button onclick="alert('Enabling Sensors...')" class="hover:bg-sky-500/10 transition-colors">📸 System Vision</button>
                     </div>
 
                     <div class="relative flex-grow">
-                        <input type="text" id="userInput" class="w-full bg-slate-800/80 border border-white/5 p-5 rounded-3xl text-sm focus:outline-none focus:border-sky-500 pr-24 shadow-2xl" placeholder="Nexus command line...">
+                        <input type="text" id="userInput" class="w-full bg-slate-800/90 border border-white/10 p-5 rounded-3xl text-sm focus:outline-none focus:border-sky-500/50 pr-28 shadow-2xl transition-all font-medium text-white" placeholder="Execute command or ask Nexus...">
                         
                         <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                            <button id="micBtn" onclick="startVoiceInput()" class="p-2 text-slate-500 hover:text-sky-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                            <button id="micBtn" onclick="startVoiceInput()" class="p-2 text-slate-500 hover:text-sky-400 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                             </button>
-                            <button onclick="sendMessage()" class="bg-sky-500 text-slate-900 p-3 rounded-2xl hover:scale-105 transition-all">
+                            <button onclick="sendMessage()" class="bg-sky-500 hover:bg-sky-400 text-slate-900 p-3 rounded-2xl transition-all shadow-lg shadow-sky-500/30 active:scale-95">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
                             </button>
                         </div>
                     </div>
                 </div>
-                
-                <div class="flex overflow-x-auto gap-3 no-scrollbar">
-                    <button onclick="quickAction('Find 10 high-value leads in UAE')" class="whitespace-nowrap bg-white/5 border border-white/5 text-[9px] py-2 px-4 rounded-full font-black text-slate-400 hover:bg-sky-500 hover:text-white transition-all uppercase">Mine Leads</button>
-                    <button onclick="quickAction('Write a $10,000 sales proposal')" class="whitespace-nowrap bg-white/5 border border-white/5 text-[9px] py-2 px-4 rounded-full font-black text-slate-400 hover:bg-sky-500 hover:text-white transition-all uppercase">Sales Proposal</button>
-                    <button onclick="quickAction('Analyze market trends 2026')" class="whitespace-nowrap bg-white/5 border border-white/5 text-[9px] py-2 px-4 rounded-full font-black text-slate-400 hover:bg-sky-500 hover:text-white transition-all uppercase">Market Intel</button>
-                    <button onclick="stopVoice()" class="whitespace-nowrap border border-red-500/20 text-[9px] py-2 px-4 rounded-full font-black text-red-500 uppercase">Stop Voice</button>
-                </div>
             </div>
         </div>
     </div>
 
-    <input type="file" id="pdfFile" accept=".pdf" class="hidden">
+    <aside class="analytics-panel">
+        <div>
+            <h3 class="text-[10px] font-black tracking-[0.3em] text-slate-500 mb-4 uppercase">Live Performance</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-900 p-3 rounded-2xl border border-white/5">
+                    <p class="text-[8px] text-slate-500 font-bold">TOKENS/SEC</p>
+                    <p class="text-xl font-black text-sky-400">124</p>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-2xl border border-white/5">
+                    <p class="text-[8px] text-slate-500 font-bold">ACCURACY</p>
+                    <p class="text-xl font-black text-emerald-400">99.2%</p>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="text-[10px] font-black tracking-[0.3em] text-slate-500 mb-4 uppercase">System Logs</h3>
+            <div class="terminal-box" id="terminalLog">
+                [SYSTEM] Initializing Nexus v3.0...<br>
+                [AUTH] Admin verification successful.<br>
+                [CORE] AI Model: GPT-4-Turbo linked.<br>
+                [KB] Vector database connected.<br>
+                [NET] Secure tunnel active on port 443.<br>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-sky-500/10 to-blue-600/10 p-5 rounded-3xl border border-sky-500/20">
+            <h4 class="text-xs font-black text-white mb-2 italic underline underline-offset-4">Enterprise Shield™</h4>
+            <p class="text-[10px] text-slate-400 leading-relaxed font-medium">Your data is encrypted using AES-256 GCM. No training occurs on your private context.</p>
+        </div>
+    </aside>
 
     <script>
-        const messagesBox = document.getElementById('messages');
-        const userInput = document.getElementById('userInput');
+        // --- CORE SYSTEM STATE ---
+        const state = {
+            activeSession: 'default',
+            theme: 'dark',
+            isSpeaking: false,
+            logs: []
+        };
 
-        // REVOLUTIONARY FEATURE: AGENT BRAIN
-        async function sendMessage() {
-            const text = userInput.value.trim();
-            if(!text) return;
+        const msgBox = document.getElementById('messages');
+        const term = document.getElementById('terminalLog');
 
-            // User UI
-            messagesBox.innerHTML += `
-                <div class="user-msg-bubble self-end p-6 rounded-2xl rounded-tr-none text-sm msg-animate max-w-[80%]">
-                    ${text}
-                </div>`;
-            
-            userInput.value = '';
-            showTyping(true);
-
-            // Simulation of Autonomous Action
-            const agentActions = ["Browsing Dubai Business Directory...", "Analyzing Competitor Prices...", "Filtering High-Value Contacts...", "Optimizing Sales Pitch..."];
-            
-            for(let action of agentActions) {
-                updateTypingText(action);
-                await new Promise(r => setTimeout(r, 800));
-            }
-
-            // AI Response (Replace with real API)
-            showTyping(false);
-            const aiResponse = `Based on my real-time analysis for "${text}", I have identified 12 key opportunities. \n\n1. **Lead Tier A**: High-conversion potential in DIFC area.\n2. **Action**: Start automated email sequence immediately.\n\nShould I export the lead list now?`;
-            
-            appendAIResponse(aiResponse);
-            messagesBox.scrollTop = messagesBox.scrollHeight;
+        // --- UTILITY: LOGGING SYSTEM ---
+        function addLog(msg) {
+            const time = new Date().toLocaleTimeString();
+            term.innerHTML += `[${time}] ${msg}<br>`;
+            term.scrollTop = term.scrollHeight;
         }
 
-        function appendAIResponse(text) {
-            messagesBox.innerHTML += `
-                <div class="ai-msg-bubble self-start p-6 rounded-2xl rounded-tl-none text-sm msg-animate max-w-[85%]">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="w-2 h-2 bg-sky-400 rounded-full animate-pulse"></span>
-                        <b class="text-sky-400 uppercase text-[9px] tracking-widest font-black">Nexus Intelligence</b>
-                    </div>
-                    <div class="text-content whitespace-pre-wrap leading-relaxed">${text}</div>
-                    <div class="flex gap-2 mt-5">
-                        <button onclick="playAIVoice(this)" class="text-[9px] bg-white/5 px-3 py-1.5 rounded-lg font-bold border border-white/10 uppercase">Listen</button>
-                        <button onclick="copyToClipboard(this)" class="text-[9px] bg-white/5 px-3 py-1.5 rounded-lg font-bold border border-white/10 uppercase">Copy</button>
-                        <button onclick="window.open('https://wa.me/?text='+encodeURIComponent(this.closest('.ai-msg-bubble').innerText))" class="text-[9px] bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-lg font-bold border border-emerald-500/10 uppercase">Share</button>
-                    </div>
-                </div>`;
+        // --- UI TOGGLES ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('hidden');
         }
 
-        function showTyping(show) {
-            let loader = document.getElementById('nexusLoader');
-            if(show) {
-                if(!loader) {
-                    messagesBox.innerHTML += `
-                        <div id="nexusLoader" class="ai-msg-bubble self-start p-4 rounded-xl flex items-center gap-3">
-                            <div class="flex gap-1"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-                            <span id="loaderText" class="text-[10px] font-black text-sky-400 uppercase tracking-tighter">Nexus Thinking...</span>
-                        </div>`;
-                }
-            } else {
-                if(loader) loader.remove();
-            }
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            addLog("Theme preference updated.");
         }
 
-        function updateTypingText(txt) {
-            const el = document.getElementById('loaderText');
-            if(el) el.innerText = txt;
-        }
-
-        // FEATURE FUNCTIONS
         function togglePlusMenu() {
             const menu = document.getElementById('plusMenu');
             menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
         }
 
-        function generateImage() {
-            const p = prompt("What visual should Nexus generate?");
-            if(p) {
-                userInput.value = "Generating AI Image for: " + p;
-                sendMessage();
+        // --- MESSAGE HANDLING ---
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            // Append User Message
+            const userMsg = `
+                <div class="user-msg-bubble self-end rounded-2xl rounded-tr-none text-white p-5 max-w-[85%] text-sm shadow-xl animate-fadeIn">
+                    ${val}
+                </div>`;
+            msgBox.insertAdjacentHTML('beforeend', userMsg);
+            input.value = '';
+            
+            // Show Typing
+            const loader = document.getElementById('typing');
+            loader.style.display = 'block';
+            msgBox.appendChild(loader);
+            msgBox.scrollTop = msgBox.scrollHeight;
+
+            addLog(`Request sent: ${val.substring(0, 20)}...`);
+
+            try {
+                // Simulating API Fetch (Replace with your actual endpoint)
+                const response = await fetch('/ask-agent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: val,
+                        product_context: document.getElementById('productDetails').value,
+                        kb_context: document.getElementById('knowledgeBase').value
+                    })
+                });
+                
+                const data = await response.json();
+                loader.style.display = 'none';
+
+                const aiMsg = `
+                    <div class="ai-msg-bubble self-start rounded-3xl rounded-tl-none p-6 max-w-[85%] shadow-lg border border-white/5 animate-fadeIn">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="w-2 h-2 bg-sky-500 rounded-full animate-pulse"></span>
+                            <span class="text-[9px] font-black text-sky-400 tracking-[0.2em] uppercase">Intelligence Response</span>
+                        </div>
+                        <div class="text-sm leading-relaxed text-slate-100 font-medium">${data.reply.replace(/\n/g, '<br>')}</div>
+                        <div class="flex gap-2 mt-6 pt-4 border-t border-white/5">
+                            <button onclick="copyMsg(this)" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase transition-all">Copy JSON</button>
+                            <button onclick="speakMsg(this)" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase transition-all">Speak</button>
+                        </div>
+                    </div>`;
+                msgBox.insertAdjacentHTML('beforeend', aiMsg);
+                addLog("Response rendered successfully.");
+            } catch (err) {
+                loader.style.display = 'none';
+                addLog("ERROR: API connection failed.");
+            }
+            msgBox.scrollTop = msgBox.scrollHeight;
+        }
+
+        // --- VOICE & AUDIO ---
+        function startVoiceInput() {
+            const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!Speech) return alert("Browser does not support voice input.");
+            
+            const rec = new Speech();
+            const btn = document.getElementById('micBtn');
+            rec.onstart = () => {
+                btn.classList.add('text-red-500', 'animate-pulse');
+                addLog("Microphone active.");
+            };
+            rec.onresult = (e) => {
+                document.getElementById('userInput').value = e.results[0][0].transcript;
+                btn.classList.remove('text-red-500', 'animate-pulse');
+            };
+            rec.start();
+        }
+
+        function speakMsg(btn) {
+            const text = btn.closest('.ai-msg-bubble').querySelector('.text-sm').innerText;
+            const synth = window.speechSynthesis;
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.onstart = () => addLog("Synthesizing audio...");
+            synth.speak(utter);
+        }
+
+        // --- PDF EXTRACTION ---
+        async function uploadPDF() {
+            const file = document.getElementById('pdfFile').files[0];
+            if (!file) return;
+
+            const btn = document.getElementById('uploadBtn');
+            btn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+            
+            addLog(`Uploading file: ${file.name}`);
+            
+            // Simulating Upload
+            setTimeout(() => {
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+                document.getElementById('knowledgeBase').value = "Extracted context from: " + file.name;
+                addLog("PDF extraction completed.");
+            }, 2000);
+        }
+
+        function updateFileName(input) {
+            if (input.files.length > 0) {
+                document.getElementById('pdfBtnLabel').innerHTML = `<span class="text-[8px] font-bold text-sky-400">PDF READY</span>`;
             }
         }
 
-        function startCamera() {
-            alert("Nexus Vision System Initializing... (Camera Access Required)");
-            // Real camera logic can be added here
+        function resetChat() {
+            if (confirm("Clear session context?")) {
+                msgBox.innerHTML = '';
+                addLog("Session cleared.");
+                window.location.reload();
+            }
         }
 
-        function startVoiceInput() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.onstart = () => document.getElementById('micBtn').classList.add('mic-active');
-            recognition.onend = () => document.getElementById('micBtn').classList.remove('mic-active');
-            recognition.onresult = (e) => {
-                userInput.value = e.results[0][0].transcript;
-                sendMessage();
-            };
-            recognition.start();
+        function quickAction(cmd) {
+            document.getElementById('userInput').value = cmd;
+            sendMessage();
         }
 
-        function playAIVoice(btn) {
-            const txt = btn.closest('.ai-msg-bubble').querySelector('.text-content').innerText;
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(txt);
-            u.lang = 'en-GB';
-            window.speechSynthesis.speak(u);
-        }
+        // Performance Simulators
+        setInterval(() => {
+            const rand = Math.floor(Math.random() * 30) + 10;
+            document.getElementById('loadVal').innerText = rand + '%';
+            document.getElementById('loadBar').style.width = rand + '%';
+        }, 5000);
 
-        function stopVoice() { window.speechSynthesis.cancel(); }
-        function toggleSidebar() { 
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('sidebarOverlay').classList.toggle('active');
-        }
-        function toggleTheme() { document.body.classList.toggle('light-mode'); }
-        function resetChat() { window.location.reload(); }
-        function quickAction(cmd) { userInput.value = cmd; sendMessage(); }
-        function copyToClipboard(btn) {
-            const txt = btn.closest('.ai-msg-bubble').querySelector('.text-content').innerText;
-            navigator.clipboard.writeText(txt);
-            btn.innerText = "COPIED!";
-            setTimeout(() => btn.innerText = "COPY", 2000);
-        }
+        // --- EVENT LISTENERS ---
+        document.getElementById("userInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
 
-        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
+        window.onload = () => {
+            addLog("Nexus OS Dashboard v3.0 stable.");
+            msgBox.scrollTop = msgBox.scrollHeight;
+        };
     </script>
 </body>
 </html>
